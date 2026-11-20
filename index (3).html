@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-rjYgClENrjeRG6HsAJhnDWtZ5/6vWV9Iu1VkTp/hoG0='; style-src 'sha256-PtgC1RePHRf/V4n/eMwHS7Mp5D6BfD11P5Tjl6Jm3dE='; img-src 'self' data:; connect-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Analyse et cadrage de la TVA récupérable à partir du grand livre – traitement 100 % local.">
+<title>Cadrage TVA récupérable – Analyse du grand livre</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f3a68'/%3E%3Ctext x='16' y='21' font-family='Arial' font-size='13' font-weight='700' fill='white' text-anchor='middle'%3ETVA%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f5f7fb;--surface:#ffffff;--surface-2:#f0f3f9;--border:#e1e6ef;--text:#1b2433;--muted:#5d6b82;
+  --primary:#1f3a68;--primary-2:#2d5aa0;--accent:#0f8b8d;--ok:#1a7f4b;--ok-bg:#e5f5ec;--ko:#c0392b;--ko-bg:#fdecea;
+  --warn:#a86400;--warn-bg:#fff4e0;--info:#2d5aa0;--info-bg:#e8f0fb;--shadow:0 1px 2px rgba(16,24,40,.05),0 4px 16px rgba(16,24,40,.06);
+  --radius:14px;--font:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;--mono:ui-monospace,"SF Mono",Consolas,monospace;
+}
+[data-theme="dark"]{
+  --bg:#0f1420;--surface:#171e2c;--surface-2:#1e2738;--border:#2a3448;--text:#e6ebf3;--muted:#98a4b8;
+  --primary:#7aa7ff;--primary-2:#9bbcff;--accent:#3cc9c4;--ok:#4cc38a;--ok-bg:#15301f;--ko:#ff7b6b;--ko-bg:#3a1d1a;
+  --warn:#f0b35a;--warn-bg:#3a2b12;--info:#9bbcff;--info-bg:#1b2a47;--shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.framed body{display:none}
+a{color:var(--primary-2)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:-999px;top:8px;background:var(--primary);color:#fff;padding:8px 12px;border-radius:8px;z-index:100}
+.skip:focus{left:8px}
+
+/* Top bar */
+.topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.topbar-in{max-width:1440px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));display:grid;place-items:center;color:#fff;font-weight:800;font-size:12px;letter-spacing:.5px;flex:none}
+.brand h1{font-size:16px;margin:0;white-space:nowrap}
+.brand p{margin:0;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spacer{flex:1}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface);padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px;transition:background .15s,border-color .15s,transform .05s;text-decoration:none;color:var(--text)}
+.btn:hover{background:var(--surface-2)}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+[data-theme="dark"] .btn-primary{color:#0f1420}
+.btn-primary:hover{background:var(--primary-2)}
+.btn-ghost{border-color:transparent;background:transparent}
+.ico{width:16px;height:16px;flex:none}
+
+main{max-width:1440px;margin:0 auto;padding:24px}
+
+/* Upload */
+.upload{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;margin-bottom:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.drop{position:relative;padding:28px;display:flex;gap:20px;align-items:center;border:2px dashed color-mix(in srgb,var(--primary) 35%,var(--border));transition:border-color .15s,background .15s;cursor:pointer}
+.drop:hover,.drop.drag{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop-ico{width:58px;height:58px;border-radius:16px;background:var(--info-bg);color:var(--primary-2);display:grid;place-items:center;flex:none}
+.drop h2{margin:0 0 4px;font-size:18px}
+.drop p{margin:0;color:var(--muted)}
+.drop .formats{margin-top:8px;font-size:12px}
+.privacy{padding:20px 22px}
+.privacy h3{margin:0 0 10px;font-size:14px;display:flex;align-items:center;gap:8px}
+.privacy ul{margin:0;padding-left:18px;color:var(--muted);font-size:13px}
+.privacy li{margin:4px 0}
+.privacy .tpl{margin-top:12px}
+.upload.compact{grid-template-columns:1fr}
+.upload.compact .privacy,.upload.compact .drop p{display:none}
+.upload.compact .drop{padding:14px 20px}
+.upload.compact .drop-ico{width:40px;height:40px;border-radius:12px}
+.upload.compact .drop h2{font-size:15px}
+footer a{margin-left:6px}
+
+/* File info */
+.fileinfo{display:none;padding:14px 18px;margin-bottom:20px;align-items:center;gap:14px;flex-wrap:wrap}
+.fileinfo.show{display:flex}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:4px 12px;font-size:12px;color:var(--muted)}
+.chip b{color:var(--text);font-weight:600}
+
+/* Progress */
+.progress{display:none;padding:18px 22px;margin-bottom:20px}
+.progress.show{display:block}
+.bar{height:6px;background:var(--surface-2);border-radius:999px;overflow:hidden;margin-top:10px}
+.bar>i{display:block;height:100%;width:30%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:999px;animation:load 1.1s ease-in-out infinite}
+@keyframes load{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+
+/* Empty state */
+.empty{text-align:center;padding:56px 24px;color:var(--muted)}
+.empty h2{color:var(--text);margin:0 0 8px;font-size:20px}
+.steps{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:24px}
+.step{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;width:230px;text-align:left}
+.step b{display:block;color:var(--text);margin-bottom:4px}
+.step span.n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--info-bg);color:var(--primary-2);font-weight:700;font-size:12px;margin-bottom:8px}
+
+/* Tabs */
+.tabs{display:none;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto;scrollbar-width:thin}
+.tabs.show{display:flex}
+.tab{border:0;background:transparent;padding:10px 14px;border-bottom:3px solid transparent;cursor:pointer;font-weight:600;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:8px;border-radius:8px 8px 0 0}
+.tab:hover{color:var(--text);background:var(--surface-2)}
+.tab[aria-selected="true"]{color:var(--primary-2);border-bottom-color:var(--primary-2)}
+.count{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-weight:700}
+.count.ko{background:var(--ko-bg);color:var(--ko)}
+.panel{display:none}
+.panel.show{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.panel-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.panel-head h2{margin:0;font-size:20px}
+.panel-head p{margin:4px 0 0;color:var(--muted);max-width:900px}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
+.kpi{padding:18px 20px}
+.kpi .l{color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.kpi .v{font-size:24px;font-weight:750;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+.kpi .s{color:var(--muted);font-size:12px;margin-top:4px}
+.kpi.hl{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;border-color:transparent}
+.kpi.hl .l,.kpi.hl .s{color:rgba(255,255,255,.8)}
+[data-theme="dark"] .kpi.hl{color:#0f1420}
+[data-theme="dark"] .kpi.hl .l,[data-theme="dark"] .kpi.hl .s{color:rgba(15,20,32,.75)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.sec{padding:18px 20px}
+.sec h3{margin:0 0 12px;font-size:15px}
+.checks{list-style:none;margin:0;padding:0}
+.checks li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--border)}
+.checks li:first-child{border-top:0}
+.checks .t{flex:1}
+.checks .t small{display:block;color:var(--muted)}
+.checks .amt{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:12px;font-weight:800}
+.dot.ok{background:var(--ok-bg);color:var(--ok)}
+.dot.ko{background:var(--ko-bg);color:var(--ko)}
+.dot.warn{background:var(--warn-bg);color:var(--warn)}
+.bars{display:flex;flex-direction:column;gap:10px}
+.barrow{display:grid;grid-template-columns:130px 1fr 120px;gap:10px;align-items:center;font-size:13px}
+.barrow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.barrow .vv{text-align:right;font-variant-numeric:tabular-nums}
+.barrow svg{width:100%;height:14px;display:block}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.c-immo{fill:var(--primary-2);background:var(--primary-2)}
+.c-chg{fill:var(--accent);background:var(--accent)}
+.c-bg{fill:var(--surface-2)}
+.keypoints{margin:0;padding-left:18px}
+.keypoints li{margin:6px 0}
+
+/* Tables */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.search{position:relative;flex:1;min-width:220px;max-width:380px}
+.search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.toolbar select{padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.toolbar label.ck{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);cursor:pointer}
+.tablewrap{overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--surface-2);font-weight:700;font-size:12px;color:var(--muted);z-index:2;white-space:nowrap;cursor:pointer;user-select:none}
+th.nosort{cursor:default}
+th[aria-sort="ascending"]::after{content:" ▲";font-size:9px}
+th[aria-sort="descending"]::after{content:" ▼";font-size:9px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.wrap{min-width:260px;max-width:460px}
+td.nowrap{white-space:nowrap}
+td.mono{font-family:var(--mono);font-size:12px}
+tbody tr:hover td{background:color-mix(in srgb,var(--primary-2) 5%,var(--surface))}
+tr.ko td{background:color-mix(in srgb,var(--ko) 7%,var(--surface))}
+tr.warn td{background:color-mix(in srgb,var(--warn) 7%,var(--surface))}
+tr.tot td{font-weight:750;background:var(--surface-2);position:sticky;bottom:0}
+tr.sub td{font-weight:700;background:var(--surface-2)}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.b-ok{background:var(--ok-bg);color:var(--ok)}
+.b-ko{background:var(--ko-bg);color:var(--ko)}
+.b-warn{background:var(--warn-bg);color:var(--warn)}
+.b-info{background:var(--info-bg);color:var(--info)}
+.b-mute{background:var(--surface-2);color:var(--muted)}
+.foot{color:var(--muted);font-size:12px;margin-top:8px}
+
+/* Anomalies */
+.anos{display:grid;gap:14px}
+.ano{padding:18px 20px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;border-left:5px solid var(--border)}
+.ano.s-high{border-left-color:var(--ko)}
+.ano.s-mid{border-left-color:var(--warn)}
+.ano.s-low{border-left-color:var(--accent)}
+.ano.s-opp{border-left-color:var(--primary-2)}
+.ano.s-ok{border-left-color:var(--ok)}
+.ano .num{font-size:22px;font-weight:800;color:var(--muted);width:32px}
+.ano h3{margin:0 0 6px;font-size:15px}
+.ano p{margin:4px 0;color:var(--text)}
+.ano .lbl{font-weight:700;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.3px;margin-top:8px;display:block}
+.ano .right{text-align:right;min-width:150px}
+.ano .amt{font-size:18px;font-weight:750;font-variant-numeric:tabular-nums;margin-top:8px}
+.ano .ref{font-size:12px;color:var(--muted);margin-top:6px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.pill{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer}
+.pill[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+[data-theme="dark"] .pill[aria-pressed="true"]{color:#0f1420}
+
+/* Params */
+.form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.field label{display:block;font-weight:600;font-size:12px;color:var(--muted);margin-bottom:6px}
+.field input,.field select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.field small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.form-actions{margin-top:18px;display:flex;gap:10px}
+
+/* Toast */
+.toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:10px;z-index:50}
+.toast{background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--primary-2);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow);max-width:420px;animation:fade .2s ease}
+.toast.err{border-left-color:var(--ko)}
+.toast.ok{border-left-color:var(--ok)}
+
+footer{max-width:1440px;margin:0 auto;padding:12px 24px 32px;color:var(--muted);font-size:12px}
+
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2,.upload{grid-template-columns:1fr}.form{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){main{padding:16px}.topbar-in{padding:10px 16px;flex-wrap:wrap}.kpis{grid-template-columns:1fr}.form{grid-template-columns:1fr}.ano{grid-template-columns:1fr}.ano .right{text-align:left}.brand p{display:none}.drop{flex-direction:column;text-align:center}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media print{
+  .topbar,.upload,.tabs,.toolbar,.filters,.toasts,.progress,#p-params,.skip{display:none!important}
+  body{background:#fff;color:#000;font-size:11px}
+  .panel{display:block!important;break-before:page}
+  #p-synthese{break-before:auto}
+  .card{box-shadow:none}
+  .tablewrap{max-height:none;overflow:visible}
+  th{position:static}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">TVA</div>
+      <div><h1>Cadrage TVA récupérable</h1><p id="subtitle">Analyse du grand livre – comptes 3455 / 3456 – CGI Maroc</p></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-export" disabled title="Exporter toutes les feuilles en Excel">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>Exporter Excel</button>
+      <button class="btn" id="btn-print" disabled title="Imprimer ou enregistrer en PDF">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z"/></svg>Imprimer</button>
+      <button class="btn" id="btn-reset" disabled title="Effacer les données chargées">Effacer</button>
+      <button class="btn btn-ghost" id="btn-theme" aria-label="Basculer le thème clair / sombre">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="upload" id="upload" aria-label="Chargement du grand livre">
+    <div class="card drop" id="drop">
+      <input type="file" id="file" accept=".xlsx,.xlsm,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" aria-label="Choisir le fichier du grand livre">
+      <div class="drop-ico" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></div>
+      <div>
+        <h2 id="drop-title">Déposez le grand livre ici</h2>
+        <p>ou cliquez pour le sélectionner. Toutes les feuilles d'analyse se recalculent automatiquement.</p>
+        <p class="formats">Formats acceptés : .xlsx, .xlsm, .csv · 25 Mo maximum · export « Grand livre global » avec colonnes Date, N° pièce, Jr., Libellé, Référence, C/Partie, Débit, Crédit, Lettrage.</p>
+      </div>
+    </div>
+    <div class="card privacy">
+      <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg>Confidentialité et sécurité</h3>
+      <ul>
+        <li>Traitement <b>100 % local</b> dans votre navigateur : aucun envoi réseau (connexions bloquées par la politique de sécurité).</li>
+        <li>Aucune bibliothèque externe, aucun cookie, aucun stockage des données comptables.</li>
+        <li>Les données disparaissent à la fermeture de l'onglet ou au clic sur « Effacer ».</li>
+      </ul>
+      <div class="tpl"><a class="btn" href="Cadrage_TVA_recuperable.xlsx" download>Télécharger le modèle Excel de référence</a></div>
+    </div>
+  </section>
+
+  <section class="card progress" id="progress" aria-live="polite"><b id="progress-txt">Lecture du fichier…</b><div class="bar"><i></i></div></section>
+  <section class="card fileinfo" id="fileinfo" aria-label="Informations sur le fichier chargé"></section>
+
+  <section class="empty" id="empty">
+    <h2>Aucun grand livre chargé</h2>
+    <p>Chargez l'export du grand livre pour obtenir le cadrage complet de la TVA récupérable.</p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><b>Charger</b>Déposez l'export Excel du grand livre de la période.</div>
+      <div class="step"><span class="n">2</span><b>Analyser</b>Cadrage fournisseurs, déclarations, FNP, anomalies fiscales.</div>
+      <div class="step"><span class="n">3</span><b>Exporter</b>Récupérez le classeur Excel complet ou imprimez en PDF.</div>
+    </div>
+  </section>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Feuilles d'analyse"></nav>
+
+  <section class="panel" id="p-synthese" role="tabpanel" tabindex="0"></section>
+  <section class="panel" id="p-detail" role="tabpanel" tabindex="0"></section>
+  <section class="panel" id="p-fourn" role="tabpanel" tabindex="0"></section>
+  <section class="panel" id="p-decl" role="tabpanel" tabindex="0"></section>
+  <section class="panel" id="p-fnp" role="tabpanel" tabindex="0"></section>
+  <section class="panel" id="p-anos" role="tabpanel" tabindex="0"></section>
+  <section class="panel" id="p-ecr" role="tabpanel" tabindex="0"></section>
+  <section class="panel" id="p-params" role="tabpanel" tabindex="0"></section>
+</main>
+<footer>Outil d'aide à l'analyse : les conclusions fiscales sont à valider au regard des pièces justificatives et du CGI en vigueur. Traitement 100 % local, aucune donnée transmise.<a href="Cadrage_TVA_recuperable.xlsx" download>Modèle Excel de référence</a></footer>
+<div class="toasts" id="toasts" aria-live="assertive"></div>
+<div class="sr-only" id="live" aria-live="polite"></div>
+
+<script>
+'use strict';
+(() => {
+/* =====================================================================
+   0. Garde-fous
+   ===================================================================== */
+if (window.top !== window.self) { document.documentElement.classList.add('framed'); return; }
+
+const LIMITS = { fileBytes: 25 * 1024 * 1024, unzipBytes: 200 * 1024 * 1024, zipEntries: 5000, rows: 400000 };
+const RATES = [0.20, 0.14, 0.10, 0.07];
+
+/* =====================================================================
+   1. Utilitaires DOM (aucun innerHTML : Trusted Types imposé par la CSP)
+   ===================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'text') el.textContent = v;
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? '' : String(v));
+  }
+  for (const k of kids.flat(Infinity)) {
+    if (k == null || k === false) continue;
+    el.append(k instanceof Node ? k : document.createTextNode(String(k)));
+  }
+  return el;
+}
+function svg(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, String(v));
+  return el;
+}
+const clear = el => { while (el.firstChild) el.removeChild(el.firstChild); return el; };
+const NF = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const PF = new Intl.NumberFormat('fr-FR', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 2 });
+const r2 = x => Math.round((x + (x >= 0 ? 1 : -1) * 1e-9) * 100) / 100;
+const fmt = n => (n == null || n === '' || Number.isNaN(n)) ? '' : (Math.abs(n) < 0.005 ? '–' : NF.format(n));
+const fmtP = n => (n == null || n === '' || !isFinite(n)) ? '' : PF.format(n);
+const fmtD = iso => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '';
+const sum = (arr, f) => arr.reduce((s, x) => s + (f ? f(x) : x), 0);
+const sw = (a, p) => !!a && !!p && String(a).startsWith(p);
+const swAny = (a, list) => list.some(p => sw(a, p));
+const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function toast(msg, kind = '') {
+  const t = h('div', { class: 'toast ' + kind, role: kind === 'err' ? 'alert' : 'status' }, msg);
+  $('#toasts').append(t);
+  setTimeout(() => t.remove(), kind === 'err' ? 9000 : 4500);
+}
+const announce = m => { $('#live').textContent = m; };
+
+/* =====================================================================
+   2. Lecture XLSX native (ZIP + XML) – sans dépendance externe
+   ===================================================================== */
+async function inflateRaw(u8, max) {
+  if (typeof DecompressionStream === 'undefined') throw new Error('Navigateur trop ancien : utilisez une version récente de Chrome, Edge, Firefox ou Safari.');
+  const reader = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const chunks = []; let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > max) { try { await reader.cancel(); } catch (_) {} throw new Error('Contenu décompressé trop volumineux : fichier refusé.'); }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total); let o = 0;
+  for (const c of chunks) { out.set(c, o); o += c.length; }
+  return out;
+}
+async function openZip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  if (u8.length < 22 || dv.getUint32(0, true) !== 0x04034b50) throw new Error("Ce fichier n'est pas un classeur Excel .xlsx valide (signature incorrecte). Un ancien .xls doit être réenregistré en .xlsx.");
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('Archive Excel corrompue.');
+  const n = dv.getUint16(eocd + 10, true), cdOff = dv.getUint32(eocd + 16, true);
+  if (n > LIMITS.zipEntries || cdOff === 0xFFFFFFFF || cdOff >= u8.length) throw new Error('Structure de classeur non prise en charge.');
+  const entries = new Map(); let p = cdOff; const td = new TextDecoder();
+  for (let i = 0; i < n; i++) {
+    if (p + 46 > u8.length || dv.getUint32(p, true) !== 0x02014b50) throw new Error('Archive Excel corrompue (répertoire).');
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), loff = dv.getUint32(p + 42, true);
+    entries.set(td.decode(u8.subarray(p + 46, p + 46 + nl)), { method, csize, loff });
+    p += 46 + nl + el + cl;
+  }
+  let budget = LIMITS.unzipBytes;
+  return {
+    async text(name) {
+      const e = entries.get(name); if (!e) return null;
+      const l = e.loff;
+      if (l + 30 > u8.length || dv.getUint32(l, true) !== 0x04034b50) throw new Error('Archive Excel corrompue (entrée).');
+      const start = l + 30 + dv.getUint16(l + 26, true) + dv.getUint16(l + 28, true);
+      if (start + e.csize > u8.length) throw new Error('Archive Excel tronquée.');
+      const data = u8.subarray(start, start + e.csize);
+      let out;
+      if (e.method === 0) out = data; else if (e.method === 8) out = await inflateRaw(data, budget); else throw new Error('Méthode de compression non prise en charge.');
+      budget -= out.length; if (budget < 0) throw new Error('Contenu décompressé trop volumineux : fichier refusé.');
+      return new TextDecoder('utf-8').decode(out);
+    }
+  };
+}
+const ENT = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
+function decodeXml(s) {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|lt|gt|amp|quot|apos);/gi, (m, g) => {
+    if (g[0] === '#') { const cp = g[1] === 'x' || g[1] === 'X' ? parseInt(g.slice(2), 16) : parseInt(g.slice(1), 10); return cp > 0 && cp < 0x110000 ? String.fromCodePoint(cp) : ''; }
+    return ENT[g.toLowerCase()] ?? m;
+  }).replace(/_x([0-9A-F]{4})_/g, (m, x) => String.fromCharCode(parseInt(x, 16)));
+}
+function attr(s, name) { const m = s.match(new RegExp('(?:^|\\s)' + name + '="([^"]*)"')); return m ? decodeXml(m[1]) : null; }
+function colIndex(ref) { let n = 0; for (const ch of ref) { const c = ch.charCodeAt(0); if (c < 65 || c > 90) break; n = n * 26 + (c - 64); } return n - 1; }
+function parseSheetXml(xml, sst) {
+  const rows = []; let seq = 0;
+  const reRow = /<row\b([^>]*?)\/>|<row\b([^>]*)>([\s\S]*?)<\/row>/g;
+  const reCell = /<c\b([^>]*?)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g;
+  let m;
+  while ((m = reRow.exec(xml))) {
+    const a = m[1] ?? m[2] ?? ''; const rAttr = attr(a, 'r');
+    const ri = rAttr ? parseInt(rAttr, 10) - 1 : seq; seq = ri + 1;
+    if (ri >= LIMITS.rows) throw new Error('Fichier trop volumineux (plus de ' + LIMITS.rows + ' lignes).');
+    const row = []; const body = m[3] || ''; let c, cseq = 0;
+    reCell.lastIndex = 0;
+    while ((c = reCell.exec(body))) {
+      const ca = c[1] ?? c[2] ?? ''; const inner = c[3] || '';
+      const ref = attr(ca, 'r'); const ci = ref ? colIndex(ref) : cseq; cseq = ci + 1;
+      if (ci < 0 || ci > 200) continue;
+      const t = attr(ca, 't'); const vm = inner.match(/<v>([\s\S]*?)<\/v>/); const v = vm ? vm[1] : null;
+      let val = null;
+      if (t === 's') val = v != null ? (sst[parseInt(v, 10)] ?? '') : null;
+      else if (t === 'inlineStr') { let s = ''; for (const tm of inner.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)) s += tm[1]; val = decodeXml(s); }
+      else if (t === 'str') val = v != null ? decodeXml(v) : null;
+      else if (t === 'b') val = v === '1';
+      else if (t === 'e') val = null;
+      else if (v != null) { const num = parseFloat(v); val = Number.isFinite(num) ? num : decodeXml(v); }
+      row[ci] = val;
+    }
+    rows[ri] = row;
+  }
+  for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = [];
+  return rows;
+}
+async function readXlsx(buf) {
+  const z = await openZip(buf);
+  const wbx = await z.text('xl/workbook.xml');
+  if (!wbx) throw new Error('Classeur Excel invalide (workbook.xml absent).');
+  const rels = (await z.text('xl/_rels/workbook.xml.rels')) || '';
+  const relMap = {};
+  for (const m of rels.matchAll(/<Relationship\b([^>]*?)\/?>/g)) relMap[attr(m[1], 'Id')] = attr(m[1], 'Target');
+  const sst = [];
+  const ss = await z.text('xl/sharedStrings.xml');
+  if (ss) for (const m of ss.matchAll(/<si\b[^>]*\/>|<si\b[^>]*>([\s\S]*?)<\/si>/g)) {
+    const inner = (m[1] || '').replace(/<rPh\b[\s\S]*?<\/rPh>/g, ''); let t = '';
+    for (const tm of inner.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)) t += tm[1];
+    sst.push(decodeXml(t));
+  }
+  const sheets = [...wbx.matchAll(/<sheet\b([^>]*?)\/?>/g)].map(m => ({ name: attr(m[1], 'name'), rid: attr(m[1], 'r:id') }));
+  if (!sheets.length) throw new Error('Aucune feuille trouvée dans le classeur.');
+  let first = null;
+  for (const s of sheets.slice(0, 30)) {
+    let t = relMap[s.rid]; if (!t) continue;
+    const path = t.startsWith('/') ? t.slice(1) : 'xl/' + t.replace(/^\.\//, '');
+    const xml = await z.text(path); if (!xml) continue;
+    const rows = parseSheetXml(xml, sst);
+    if (!first) first = { rows, sheet: s.name };
+    if (findHeader(rows) >= 0) return { rows, sheet: s.name };
+  }
+  if (!first) throw new Error('Impossible de lire les feuilles du classeur.');
+  return first;
+}
+function readCsv(buf) {
+  let text = new TextDecoder('utf-8').decode(buf);
+  if (text.includes('�')) text = new TextDecoder('windows-1252').decode(buf);
+  text = text.replace(/^﻿/, '');
+  const firstLine = text.slice(0, text.indexOf('\n') > 0 ? text.indexOf('\n') : text.length);
+  const delim = (firstLine.split(';').length >= firstLine.split(',').length) ? ';' : ',';
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; if (rows.length > LIMITS.rows) throw new Error('Fichier trop volumineux.'); }
+    else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return { rows: rows.map(r => r.map(v => v === '' ? null : v)), sheet: 'CSV' };
+}
+
+/* =====================================================================
+   3. Lecture du grand livre
+   ===================================================================== */
+function findHeader(rows) {
+  for (let i = 0; i < Math.min(rows.length, 60); i++) {
+    const n = (rows[i] || []).map(norm);
+    if (n.includes('date') && n.some(x => x.includes('debit')) && n.some(x => x.includes('credit'))) return i;
+  }
+  return -1;
+}
+function toISOfromFR(s) { const m = String(s).match(/^\s*(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\s*$/); if (!m) return null; let y = +m[3]; if (y < 100) y += 2000; const d = +m[1], mo = +m[2]; if (mo < 1 || mo > 12 || d < 1 || d > 31) return null; return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+function toISO(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') { if (v < 20000 || v > 80000) return null; const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000); return d.toISOString().slice(0, 10); }
+  return toISOfromFR(v);
+}
+function num(v) {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+  const s = String(v).replace(/[\s  ]/g, '').replace(/,(?=\d{1,2}$)/, '.').replace(/,/g, '');
+  const n = parseFloat(s); return Number.isFinite(n) ? n : 0;
+}
+const str = v => v == null ? '' : String(v).trim();
+
+function parseGL(rows) {
+  const hi = findHeader(rows);
+  if (hi < 0) throw new Error("En-tête du grand livre introuvable : le fichier doit contenir les colonnes « Date », « Débit » et « Crédit ».");
+  const hn = rows[hi].map(norm);
+  const find = (...tests) => hn.findIndex(x => x && tests.some(t => typeof t === 'function' ? t(x) : x === t));
+  const map = {
+    date: find('date'), piece: find(x => x.includes('piece') || x === 'npiece' || x === 'piece'),
+    jnl: find(x => x === 'jr' || x.startsWith('journal') || x === 'jnl' || x === 'jl'), lib: find(x => x.startsWith('libelle')),
+    ref: find(x => x.startsWith('reference') || x === 'ref'), cp: find(x => x.includes('partie') || x.includes('contrepartie')),
+    d: find(x => x.includes('debit')), c: find(x => x.includes('credit')), lett: find(x => x.startsWith('lettr'))
+  };
+  for (const k of ['date', 'lib', 'd', 'c']) if (map[k] < 0) throw new Error('Colonne obligatoire manquante dans le grand livre : ' + k);
+  let periodStart = null, periodEnd = null;
+  for (let i = 0; i <= hi; i++) {
+    const j = (rows[i] || []).map(str).join(' ');
+    const m = j.match(/p[ée]riode\s+du\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+au\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+    if (m) { periodStart = toISOfromFR(m[1]); periodEnd = toISOfromFR(m[2]); }
+  }
+  const accounts = new Map(); const entries = []; const totals = new Map(); let glTotal = null;
+  let cur = null; const g = (r, k) => map[k] >= 0 ? r[map[k]] : null;
+  for (let i = hi + 1; i < rows.length; i++) {
+    const r = rows[i] || []; const c0 = r[0];
+    const iso = toISO(g(r, 'date'));
+    if (iso && cur) {
+      const lib = str(g(r, 'lib'));
+      const e = {
+        id: entries.length, acct: cur, date: iso, piece: str(g(r, 'piece')), jnl: str(g(r, 'jnl')), lib,
+        ref: str(g(r, 'ref')), cp: str(g(r, 'cp')).replace(/\s/g, ''), d: r2(num(g(r, 'd'))), c: r2(num(g(r, 'c'))), lettre: str(g(r, 'lett'))
+      };
+      e.isAN = e.jnl === '00' || /^a\s*nouveau/i.test(lib);
+      entries.push(e); continue;
+    }
+    if (typeof c0 === 'string') {
+      const t = c0.trim();
+      let m;
+      if ((m = t.match(/^TOTAL\s+COMPTE\s+(\d{4,12})/i))) { totals.set(m[1], { d: r2(num(r[map.d])), c: r2(num(r[map.c])) }); continue; }
+      if (/^TOTAL\s+GRAND\s+LIVRE/i.test(t)) { glTotal = { d: r2(num(r[map.d])), c: r2(num(r[map.c])) }; continue; }
+      if (/^(MVTS|TOTAL|SOUS)/i.test(t)) continue;
+      if ((m = t.match(/^(\d{4,12})\s+(.+)$/))) { cur = m[1]; if (!accounts.has(cur)) accounts.set(cur, m[2].replace(/^[-\s]+/, '').trim()); }
+    }
+  }
+  if (!entries.length) throw new Error('Aucune écriture reconnue dans le grand livre.');
+  if (!periodStart || !periodEnd) {
+    const ds = entries.filter(e => !e.isAN).map(e => e.date).sort();
+    periodStart = periodStart || (entries.find(e => e.isAN)?.date) || ds[0];
+    periodEnd = periodEnd || ds[ds.length - 1];
+  }
+  return { accounts, entries, totals, glTotal, periodStart, periodEnd };
+}
+
+/* =====================================================================
+   4. Moteur d'analyse TVA
+   ===================================================================== */
+const DEFAULT_CFG = {
+  rate: 0.20, regime: 'T', company: '',
+  p: { tvaImmo: '34551', tvaChg: '34552', credit: '3456', tvaDue: '4455', etatAutres: '4457', fourn: '4411', fnp: '4417',
+       banque: '514,516,511,554,552', caisse: '516', tce: '7197', depl: '6143' }
+};
+function lists(cfg) { return { banque: cfg.p.banque.split(',').map(s => s.trim()).filter(Boolean), depl: cfg.p.depl.split(',').map(s => s.trim()).filter(Boolean) }; }
+
+function periodLabel(iso, regime) {
+  const y = iso.slice(2, 4), m = +iso.slice(5, 7);
+  return regime === 'M' ? `${String(m).padStart(2, '0')}.${y}` : `${Math.ceil(m / 3)}T.${y}`;
+}
+function periodList(start, end, regime) {
+  const out = []; let y = +start.slice(0, 4), m = +start.slice(5, 7);
+  if (regime === 'T') m = Math.floor((m - 1) / 3) * 3 + 1;
+  const step = regime === 'M' ? 1 : 3;
+  for (let k = 0; k < 120; k++) {
+    const s = `${y}-${String(m).padStart(2, '0')}-01`;
+    if (s > end) break;
+    let ey = y, em = m + step - 1; const last = new Date(Date.UTC(ey, em, 0)).getUTCDate();
+    const e = `${ey}-${String(em).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+    out.push({ label: periodLabel(s, regime), start: s, end: e });
+    m += step; if (m > 12) { m -= 12; y++; }
+  }
+  return out;
+}
+function nearestRate(t) { let best = RATES[0]; for (const r of RATES) if (Math.abs(r - t) < Math.abs(best - t)) best = r; return best; }
+
+function analyze(gl, cfg) {
+  const P = cfg.p, L = lists(cfg), R = cfg.rate;
+  const E = gl.entries, A = gl.accounts;
+  const lib = a => A.get(a) || '';
+  const isTVA = a => sw(a, '3455');
+  const isBank = a => swAny(a, L.banque);
+
+  // Soldes par compte
+  const bal = new Map(); for (const e of E) bal.set(e.acct, r2((bal.get(e.acct) || 0) + e.d - e.c));
+  const balPrefix = p => r2(sum([...bal].filter(([a]) => sw(a, p)), ([, b]) => b));
+
+  // Pièces
+  const pieces = new Map();
+  for (const e of E) { if (e.isAN) continue; const k = e.jnl + '|' + e.piece + '|' + e.date; if (!pieces.has(k)) pieces.set(k, []); pieces.get(k).push(e); }
+  const pieceOf = e => pieces.get(e.jnl + '|' + e.piece + '|' + e.date) || [e];
+
+  // Comptes de charges transférés en immobilisation (TCE)
+  const capital = new Set(); const tceNotes = [];
+  for (const t of E.filter(e => sw(e.acct, P.tce) && e.c > 0 && sw(e.cp, '2'))) {
+    for (const [a, b] of bal) if (sw(a, '6') && Math.abs(b - t.c) < 0.05) { capital.add(a); tceNotes.push({ acct: a, amount: t.c, lib: t.lib }); }
+    for (const tok of t.lib.split(/[\s:]+/).filter(x => x.length >= 5 && /\d/.test(x))) {
+      for (const e of E) if (e.ref === tok && sw(e.acct, '6')) capital.add(e.acct);
+    }
+  }
+
+  // Lettrage fournisseurs → statut de paiement
+  const lettGroups = new Map();
+  for (const e of E) if (sw(e.acct, P.fourn) && e.lettre) { const k = e.acct + '|' + e.lettre; if (!lettGroups.has(k)) lettGroups.set(k, []); lettGroups.get(k).push(e); }
+  function payStatus(sup) {
+    if (!sup) return { st: 'Inconnu' };
+    if (sup.lettre) {
+      const g = lettGroups.get(sup.acct + '|' + sup.lettre) || [];
+      const pays = g.filter(x => x.d > 0 && isBank(x.cp));
+      if (pays.length) { const date = pays.map(x => x.date).sort().pop(); return { st: 'Payée', date, cash: pays.some(x => sw(x.cp, P.caisse)), cashAmt: sum(pays.filter(x => sw(x.cp, P.caisse)), x => x.d) }; }
+      return { st: 'Compensée' };
+    }
+    if (Math.abs(bal.get(sup.acct) || 0) < 0.01) {
+      const pays = E.filter(x => x.acct === sup.acct && x.d > 0 && isBank(x.cp));
+      if (pays.length) return { st: 'Payée', date: pays.map(x => x.date).sort().pop(), assumed: true };
+    }
+    return { st: 'Non payée' };
+  }
+
+  // Détail des lignes TVA
+  const detail = [];
+  for (const e of E) {
+    if (!isTVA(e.acct) && !sw(e.acct, P.credit)) continue;
+    const row = { id: e.id, date: e.date, piece: e.piece, jnl: e.jnl, acct: e.acct, lib: e.lib, ref: e.ref, deb: e.d, cred: e.c, tva: r2(e.d - e.c),
+      supAcct: '', supName: '', htAccts: '', nature: '', ht: null, taux: null, ecart: null, statut: '', datePay: '', periode: '', attendu: '', conforme: '', autoliq: false, tvaExcl: 0, obs: [], type: 'Facture' };
+    if (sw(e.acct, P.credit)) { row.type = 'Crédit de TVA'; row.periode = periodLabel(e.date, cfg.regime); row.obs.push('Mouvement du compte de crédit de TVA.'); detail.push(row); continue; }
+    if (e.isAN) { row.type = 'À nouveau'; row.statut = 'À nouveau'; row.obs.push('Solde d\'ouverture : rapproché des à-nouveaux fournisseurs (onglet Cadrage fournisseurs).'); detail.push(row); continue; }
+    if (sw(e.cp, P.credit)) { row.type = 'Transfert déclaration'; row.periode = periodLabel(e.date, cfg.regime); row.obs.push('Transfert de la TVA déduite vers le crédit de TVA.'); detail.push(row); continue; }
+    const lines = pieceOf(e);
+    const sups = lines.filter(x => sw(x.acct, P.fourn));
+    const sup = sups.find(x => x.ref === e.ref) || sups[0];
+    const htL = lines.filter(x => !isTVA(x.acct) && /^[236]/.test(x.acct));
+    const ht = r2(sum(htL, x => x.d - x.c));
+    row.supAcct = sup ? sup.acct : ''; row.supName = sup ? lib(sup.acct) : '';
+    row.htAccts = [...new Set(htL.map(x => x.acct))].join(' / ');
+    row.ht = htL.length ? ht : null;
+    row.autoliq = lines.some(x => (sw(x.acct, P.tvaDue) || sw(x.acct, P.etatAutres)) && Math.abs(x.c - row.tva) < 0.05) || sw(e.cp, '445');
+    row.autoliqAcct = row.autoliq ? ((lines.find(x => (sw(x.acct, P.tvaDue) || sw(x.acct, P.etatAutres)) && Math.abs(x.c - row.tva) < 0.05) || {}).acct || e.cp) : '';
+    row.nature = htL.some(x => sw(x.acct, '2')) ? 'Immobilisation' : htL.some(x => capital.has(x.acct)) ? 'Immobilisation (TCE)' : htL.length ? 'Charge' : 'Indéterminée';
+    row.attendu = row.nature.startsWith('Immobilisation') ? P.tvaImmo : P.tvaChg;
+    row.conforme = row.nature === 'Indéterminée' ? '' : (sw(e.acct, row.attendu) ? 'Oui' : 'Non');
+    if (row.ht) { row.taux = row.tva / row.ht; const nr = nearestRate(row.taux); row.ecart = r2(row.tva - row.ht * nr); row.tauxRef = nr; }
+    const ndHT = r2(sum(htL.filter(x => swAny(x.acct, L.depl)), x => x.d - x.c));
+    if (ndHT && row.ht) { row.tvaExcl = r2(ndHT * (row.tauxRef || R)); row.ndHT = ndHT; row.ndAcct = htL.find(x => swAny(x.acct, L.depl)).acct; }
+    const ps = row.autoliq && !sup ? { st: 'Non payée' } : payStatus(sup);
+    row.statut = ps.st; row.datePay = ps.date || ''; row.cash = ps.cash; row.assumed = ps.assumed;
+    row.periode = ps.st === 'Payée' ? periodLabel(ps.date, cfg.regime) : ps.st === 'Compensée' ? 'Sans objet' : 'Droit non né';
+    if (row.conforme === 'Non') row.obs.push(row.attendu === P.tvaImmo ? `TVA sur immobilisation imputée en ${e.acct.slice(0, 5)} : à reclasser en ${P.tvaImmo}.` : `TVA sur charge imputée en ${e.acct.slice(0, 5)} : à reclasser en ${P.tvaChg}.`);
+    if (row.nature === 'Immobilisation (TCE)') row.obs.push('Charge transférée en immobilisation (transfert de charges).');
+    if (row.autoliq) row.obs.push('TVA autoliquidée (prestataire non-résident, art. 115 CGI) : exigible et déductible au paiement.');
+    if (row.tvaExcl) row.obs.push(`Dont ${fmt(row.tvaExcl)} de TVA sur frais de déplacement / mission exclue du droit à déduction (art. 106 CGI).`);
+    if (row.ecart != null && Math.abs(row.ecart) > 1) row.obs.push(`Taux atypique (${fmtP(row.taux)}) : vérifier la facture.`);
+    if (ps.st === 'Non payée') row.obs.push('Facture non réglée : droit à déduction non né (art. 101-3° CGI).');
+    if (ps.st === 'Payée') row.obs.push(`Réglée le ${fmtD(ps.date)}${ps.assumed ? ' (déduit du solde nul, non lettrée)' : ''} : déductible en ${row.periode}.`);
+    if (ps.st === 'Compensée') row.obs.push('Facture compensée par avoir (lettrage sans règlement).');
+    if (ps.cash && ps.cashAmt > 5000) row.obs.push('Règlement en espèces > 5 000 DH : déduction limitée (art. 106-II CGI).');
+    detail.push(row);
+  }
+  detail.sort((a, b) => (a.acct.localeCompare(b.acct)) || (a.type === 'À nouveau' ? -1 : b.type === 'À nouveau' ? 1 : 0) || a.date.localeCompare(b.date) || a.piece.localeCompare(b.piece));
+  const inv = detail.filter(d => d.type === 'Facture');
+
+  // Nature dominante par fournisseur
+  const supNature = new Map();
+  for (const d of inv) { if (!d.supAcct) continue; const s = supNature.get(d.supAcct) || { immo: 0, chg: 0 }; if (d.nature.startsWith('Immobilisation')) s.immo += Math.abs(d.tva); else s.chg += Math.abs(d.tva); supNature.set(d.supAcct, s); }
+
+  // Cadrage fournisseurs
+  const supAccts = [...A.keys()].filter(a => sw(a, P.fourn)).sort();
+  const k = R / (1 + R);
+  const fourn = supAccts.map(a => {
+    const lines = E.filter(e => e.acct === a);
+    const solde = r2(-(bal.get(a) || 0));
+    const an = r2(sum(lines.filter(e => e.isAN), e => e.c - e.d));
+    const myInv = inv.filter(d => d.supAcct === a);
+    const auto = myInv.some(d => d.autoliq);
+    const np = myInv.filter(d => d.statut === 'Non payée');
+    const theo = auto ? r2(sum(np.filter(d => d.autoliq), d => (d.ht || 0) * (d.tauxRef || R))) : r2(solde * k);
+    const tvaAN = auto ? 0 : r2(an * k);
+    const tvaNP = r2(sum(np, d => d.tva));
+    const sn = supNature.get(a);
+    const nat = sn ? (sn.immo >= sn.chg ? 'Immobilisation' : 'Charge') : '';
+    const paidNoTva = lines.filter(e => e.c > 0 && !e.isAN && e.lettre && !sw(e.jnl, 'B') && !pieceOf(e).some(x => isTVA(x.acct)) && !inv.some(d => d.supAcct === a && d.piece === e.piece && d.date === e.date))
+      .filter(e => payStatus(e).st === 'Payée');
+    let com = [];
+    if (np.length || tvaAN) com.push(`${np.length} facture(s) ${new Date(gl.periodEnd).getUTCFullYear()} non réglée(s)${tvaAN ? ' + à-nouveau' : ''} : TVA non encore déductible.`);
+    if (auto) com.push('Prestataire non-résident : TVA autoliquidée = base HT brute × taux.');
+    if (paidNoTva.length) com.push(`Facture(s) réglée(s) sans TVA comptabilisée : ${paidNoTva.map(e => e.ref || e.piece).join(', ')} – à vérifier.`);
+    if (!np.length && !tvaAN && Math.abs(solde) < 0.01) com.push('Compte soldé.');
+    return { acct: a, name: lib(a), mode: auto ? 'Autoliquidation' : 'TVA facturée', nature: nat, solde, an, theo, tvaAN, tvaNP, total: r2(tvaAN + tvaNP), ecart: r2(tvaAN + tvaNP - theo), paidNoTva, com: com.join(' ') };
+  });
+  const totF = { solde: r2(sum(fourn, f => f.solde)), an: r2(sum(fourn, f => f.an)), theo: r2(sum(fourn, f => f.theo)), tvaAN: r2(sum(fourn, f => f.tvaAN)), tvaNP: r2(sum(fourn, f => f.tvaNP)), total: r2(sum(fourn, f => f.total)), ecart: r2(sum(fourn, f => f.ecart)) };
+
+  const s34551 = balPrefix(P.tvaImmo), s34552 = balPrefix(P.tvaChg), s3455 = balPrefix('3455'), s3456 = balPrefix(P.credit);
+  const an3455 = r2(sum(detail.filter(d => d.type === 'À nouveau'), d => d.tva));
+  const paidTva = r2(sum(inv.filter(d => d.statut === 'Payée'), d => d.tva));
+  const transf = r2(-sum(detail.filter(d => d.type === 'Transfert déclaration'), d => d.tva));
+  const compens = r2(sum(inv.filter(d => d.statut === 'Compensée'), d => d.tva));
+  const otherInv = r2(sum(inv.filter(d => !['Payée', 'Non payée', 'Compensée'].includes(d.statut)), d => d.tva));
+  const recon = {
+    an3455, anRecon: totF.tvaAN, ecartAN: r2(an3455 - totF.tvaAN), np: totF.tvaNP, paidNotTransf: r2(paidTva - transf), compens, otherInv,
+    gl: s3455
+  };
+  recon.reconstitue = r2(recon.an3455 + recon.np + recon.paidNotTransf + recon.compens + recon.otherInv);
+  recon.residuel = r2(recon.gl - recon.reconstitue);
+  recon.glUnpaid = r2(s3455 - recon.paidNotTransf - recon.compens);
+  recon.ecartTheo = r2(totF.theo - recon.glUnpaid);
+
+  // Cadrage des déclarations
+  const pers = periodList(gl.periodStart, gl.periodEnd, cfg.regime);
+  const creditLines = E.filter(e => sw(e.acct, P.credit));
+  const creditInit = r2(sum(creditLines.filter(e => e.date < gl.periodStart || e.isAN), e => e.d - e.c));
+  const decl = []; let prevTheo = creditInit;
+  for (const p of pers) {
+    const inP = d => d >= p.start && d <= p.end;
+    const ded = inv.filter(d => d.statut === 'Payée' && d.datePay && inP(d.datePay));
+    const dedChg = r2(sum(ded.filter(d => !d.nature.startsWith('Immobilisation')), d => d.tva - d.tvaExcl));
+    const dedImmo = r2(sum(ded.filter(d => d.nature.startsWith('Immobilisation')), d => d.tva - d.tvaExcl));
+    const autoDue = r2(sum(ded.filter(d => d.autoliq), d => d.tva));
+    const coll = r2(sum(E.filter(e => sw(e.acct, P.tvaDue) && !e.isAN && inP(e.date) && !inv.some(d => d.autoliq && d.piece === e.piece && d.date === e.date)), e => e.c - e.d));
+    const tr = r2(-sum(detail.filter(d => d.type === 'Transfert déclaration' && inP(d.date)), d => d.tva));
+    const theoFin = r2(prevTheo + dedChg + dedImmo - coll - autoDue);
+    const compta = r2(sum(creditLines.filter(e => e.isAN || e.date <= p.end), e => e.d - e.c));
+    decl.push({ label: p.label, start: p.start, end: p.end, coll, autoDue, dedChg, dedImmo, ded: r2(dedChg + dedImmo), transf: tr, ecartDed: r2(dedChg + dedImmo - tr), debut: prevTheo, theoFin: Math.max(theoFin, 0), aPayer: theoFin < 0 ? -theoFin : 0, compta, ecart: r2(Math.max(theoFin, 0) - compta), nbPay: ded.length });
+    prevTheo = Math.max(theoFin, 0);
+  }
+  const lastDecl = decl[decl.length - 1];
+
+  // FNP
+  const fnpLines = E.filter(e => sw(e.acct, P.fnp) && !e.lettre && Math.abs(e.c - e.d) > 0.004);
+  const fnpGroups = new Map();
+  for (const e of fnpLines) { const key = e.acct + '|' + (e.cp || 'AN'); fnpGroups.set(key, (fnpGroups.get(key) || new Set()).add(e.date)); }
+  const fnp = fnpLines.map(e => {
+    const amt = r2(e.c - e.d);
+    let nature, dest, ded = 1;
+    if (!e.cp) { nature = 'Charge (à-nouveau)'; dest = P.tvaChg; }
+    else if (sw(e.cp, '2') || capital.has(e.cp)) { nature = 'Immobilisation'; dest = P.tvaImmo; }
+    else if (swAny(e.cp, L.depl)) { nature = 'Non déductible'; dest = '—'; ded = 0; }
+    else { nature = 'Charge'; dest = P.tvaChg; }
+    const dup = (fnpGroups.get(e.acct + '|' + (e.cp || 'AN')) || new Set()).size > 1;
+    const old = e.isAN || e.date < gl.periodStart;
+    const com = [];
+    if (dup) com.push('Plusieurs FNP ouvertes sur la même nature : vérifier l\'extourne (risque de doublon).');
+    if (old) com.push('FNP ancienne (à-nouveau) : confirmer qu\'elle est toujours due.');
+    if (nature === 'Non déductible') com.push('Frais de déplacement / mission : TVA exclue (art. 106 CGI).');
+    if (capital.has(e.cp)) com.push('Charge transférée en immobilisation : TVA future sur immobilisation.');
+    return { date: e.date, acct: e.acct, name: lib(e.acct), lib: e.lib, cp: e.cp, cpName: lib(e.cp), amt, nature, dest, tva: r2(amt * R), tvaDed: r2(amt * R * ded), dup, com: com.join(' ') };
+  });
+  const totFnp = { amt: r2(sum(fnp, f => f.amt)), tva: r2(sum(fnp, f => f.tva)), tvaDed: r2(sum(fnp, f => f.tvaDed)), immo: r2(sum(fnp.filter(f => f.dest === P.tvaImmo), f => f.tvaDed)), chg: r2(sum(fnp.filter(f => f.dest === P.tvaChg), f => f.tvaDed)) };
+
+  // Intégrité
+  const integ = [];
+  for (const [a, t] of gl.totals) {
+    const lines = E.filter(e => e.acct === a);
+    const d = r2(sum(lines, e => e.d)), c = r2(sum(lines, e => e.c));
+    if (Math.abs(d - t.d) > 0.02 || Math.abs(c - t.c) > 0.02) integ.push({ acct: a, d, c, td: t.d, tc: t.c });
+  }
+  const glD = r2(sum(E, e => e.d)), glC = r2(sum(E, e => e.c));
+
+  // Anomalies et écritures
+  const anos = []; const ecr = [];
+  const mostUsed = prefix => { const m = new Map(); for (const e of E) if (sw(e.acct, prefix)) m.set(e.acct, (m.get(e.acct) || 0) + 1); return [...m].sort((x, y) => y[1] - x[1])[0]?.[0] || (prefix + '0000').slice(0, 9); };
+  const immoAcct = mostUsed(P.tvaImmo), chgAcct = mostUsed(P.tvaChg);
+
+  // A1 Imputation
+  const nonConf = inv.filter(d => d.conforme === 'Non');
+  const anLine = detail.find(d => d.type === 'À nouveau' && sw(d.acct, P.tvaChg));
+  const anImmo = anLine ? fourn.filter(f => f.nature === 'Immobilisation' && f.tvaAN) : [];
+  const anImmoAmt = r2(sum(anImmo, f => f.tvaAN));
+  const toImmo = nonConf.filter(d => d.attendu === P.tvaImmo);
+  const toChg = nonConf.filter(d => d.attendu === P.tvaChg);
+  const a1 = r2(sum(toImmo, d => d.tva) + anImmoAmt);
+  if (a1 || toChg.length) {
+    const det = [];
+    if (anImmoAmt) det.push(`à-nouveau ${anImmo.map(f => f.name).join(', ')} : ${fmt(anImmoAmt)}`);
+    for (const d of toImmo) det.push(`${d.supName || d.lib} ${d.ref} : ${fmt(d.tva)}`);
+    anos.push({ sev: 'high', theme: 'Imputation de la TVA sur immobilisations', montant: r2(a1 + sum(toChg, d => d.tva)),
+      constat: `TVA relative à des immobilisations (comptes 2 ou charges transférées en immobilisation) imputée en ${P.tvaChg} au lieu de ${P.tvaImmo}. Détail : ${det.join(' ; ')}.` + (toChg.length ? ` Inversement, ${toChg.length} ligne(s) de charges en ${P.tvaImmo}.` : ''),
+      ref: 'CGNC (3455) ; art. 101 et 103 bis CGI',
+      impact: 'Bilan mal présenté ; ventilation erronée entre « immobilisations » et « autres achats » dans les déclarations ; peut compromettre une demande de remboursement du crédit de TVA sur biens d\'investissement.',
+      reco: `Reclasser ${P.tvaChg} → ${P.tvaImmo} (écriture proposée) et déclarer cette TVA, au paiement, dans la rubrique immobilisations.` });
+    const byAcct = new Map();
+    if (anImmoAmt) byAcct.set(anLine.acct, (byAcct.get(anLine.acct) || 0) + anImmoAmt);
+    for (const d of toImmo) byAcct.set(d.acct, (byAcct.get(d.acct) || 0) + d.tva);
+    for (const [a, v] of byAcct) ecr.push({ ref: 'E1', lines: [
+      { acct: immoAcct, lib: lib(immoAcct) || 'TVA récupérable sur immobilisations', d: r2(v), c: 0 },
+      { acct: a, lib: lib(a), d: 0, c: r2(v) }], just: 'Reclassement de la TVA sur immobilisations imputée en TVA sur charges.' });
+    const byAcct2 = new Map(); for (const d of toChg) byAcct2.set(d.acct, (byAcct2.get(d.acct) || 0) + d.tva);
+    for (const [a, v] of byAcct2) ecr.push({ ref: 'E1b', lines: [{ acct: chgAcct, lib: lib(chgAcct), d: r2(v), c: 0 }, { acct: a, lib: lib(a), d: 0, c: r2(v) }], just: 'Reclassement de la TVA sur charges imputée en TVA sur immobilisations.' });
+  }
+  // A2 Autoliquidation
+  const auto = inv.filter(d => d.autoliq);
+  if (auto.length) {
+    const amt = r2(sum(auto, d => d.tva)); const unpaid = auto.filter(d => d.statut !== 'Payée');
+    const wrongAcct = auto.filter(d => d.autoliqAcct && !sw(d.autoliqAcct, P.tvaDue));
+    anos.push({ sev: 'mid', theme: 'Autoliquidation – prestataires non-résidents', montant: amt,
+      constat: `${auto.length} facture(s) de non-résident avec TVA autoliquidée (${auto.map(d => (d.supName || '') + ' ' + d.ref).join(', ')}).` + (wrongAcct.length ? ` Contrepartie créditée en ${[...new Set(wrongAcct.map(d => d.autoliqAcct))].join(', ')} au lieu d'un compte de TVA due (${P.tvaDue}).` : '') + (unpaid.length ? ` ${unpaid.length} non réglée(s) au ${fmtD(gl.periodEnd)}.` : ''),
+      ref: 'Art. 115, 117 et 101-3° CGI',
+      impact: 'La TVA devient exigible au paiement du prestataire : elle est à déclarer et à verser pour son compte, puis à déduire. La base en dirhams doit être celle du jour du paiement (écart de change possible). Retenue à la source de 10 % à verser également.',
+      reco: 'Isoler la TVA due en 4455 ; caler le paiement, la TVA autoliquidée et la retenue à la source sur la même échéance déclarative.' });
+    for (const d of wrongAcct) ecr.push({ ref: 'E2', lines: [
+      { acct: d.autoliqAcct, lib: lib(d.autoliqAcct), d: d.tva, c: 0 },
+      { acct: (P.tvaDue + '00000').slice(0, 9), lib: 'État TVA due – autoliquidation non-résidents (sous-compte à créer)', d: 0, c: d.tva }], just: `Isoler la TVA autoliquidée ${d.supName} ${d.ref} dans un compte de TVA due.` });
+  }
+  // A3 Non déductible
+  const excl = inv.filter(d => d.tvaExcl);
+  if (excl.length) {
+    const amt = r2(sum(excl, d => d.tvaExcl));
+    anos.push({ sev: 'high', theme: 'TVA exclue du droit à déduction (déplacements, missions)', montant: amt,
+      constat: `${excl.map(d => `${d.supName} ${d.ref} : HT ${fmt(d.ndHT)} sur ${d.ndAcct}, TVA ${fmt(d.tvaExcl)}`).join(' ; ')}. Cette TVA est comptabilisée en TVA récupérable.`,
+      ref: 'Art. 106-I CGI (frais de mission, hébergement, restauration, transport de personnes)',
+      impact: 'Risque de redressement avec pénalités et majorations si cette TVA est déduite. Si la refacturation est un débours, elle ne devrait pas porter de TVA.',
+      reco: 'Ne pas déduire cette part ; la passer en charge (ou en coût de l\'immobilisation si capitalisée). Faire qualifier la refacturation par le fournisseur.' });
+    for (const d of excl) ecr.push({ ref: 'E3', lines: [{ acct: d.ndAcct, lib: lib(d.ndAcct), d: d.tvaExcl, c: 0 }, { acct: d.acct, lib: lib(d.acct), d: 0, c: d.tvaExcl }], just: `TVA non déductible sur frais de déplacement – ${d.supName} ${d.ref}.` });
+  }
+  // A4 Droit non né
+  if (recon.glUnpaid > 0.01) {
+    const top = fourn.filter(f => f.total > 0.01).sort((a, b) => b.total - a.total).map(f => `${f.name} ≈ ${fmt(f.total)}`).join(', ');
+    anos.push({ sev: 'mid', theme: 'Droit à déduction non né', montant: recon.glUnpaid,
+      constat: `${fmtP(s3455 ? recon.glUnpaid / s3455 : 0)} du solde 3455 (${fmt(s3455)}) correspond à des factures non réglées : ${top}.`,
+      ref: 'Art. 101-3° CGI',
+      impact: 'Le droit naît au paiement et doit être exercé dans un délai d\'un an à compter du mois ou du trimestre de paiement : au-delà, la TVA est perdue.',
+      reco: 'Suivre chaque facture (paiement, période de déduction) et lettrer systématiquement TVA et règlements.' });
+  }
+  // A5 Payée non déduite / forclusion
+  if (Math.abs(recon.paidNotTransf) > 0.01) {
+    const paid = inv.filter(d => d.statut === 'Payée');
+    const limit = new Date(gl.periodEnd); limit.setUTCFullYear(limit.getUTCFullYear() - 1); const lim = limit.toISOString().slice(0, 10);
+    const risky = paid.filter(d => d.datePay < lim);
+    anos.push({ sev: risky.length ? 'high' : 'mid', theme: 'TVA payée non encore déduite', montant: recon.paidNotTransf,
+      constat: `TVA sur factures réglées encore au débit du 3455 (non transférée au crédit de TVA).` + (risky.length ? ` ${risky.length} facture(s) réglée(s) depuis plus d'un an : risque de forclusion.` : ''),
+      ref: 'Art. 101-3° CGI', impact: 'Perte définitive de la TVA si le délai d\'un an est dépassé.', reco: 'Déduire sur la prochaine déclaration et comptabiliser le transfert vers 3456.' });
+  }
+  // A6 Factures réglées sans TVA
+  const pnt = fourn.flatMap(f => f.paidNoTva.map(e => ({ f, e })));
+  if (pnt.length) {
+    const amt = r2(sum(pnt, x => x.e.c * k));
+    anos.push({ sev: 'low', theme: 'Factures réglées sans TVA comptabilisée', montant: amt,
+      constat: pnt.map(x => `${x.f.name} ${x.e.ref || x.e.piece} du ${fmtD(x.e.date)} (${fmt(x.e.c)} TTC)`).join(' ; ') + ' : aucune TVA correspondante en 3455 ni en déduction.',
+      ref: 'Art. 101-3° CGI', impact: `Perte possible de TVA (estimation à ${fmtP(R)} : ${fmt(amt)}).`,
+      reco: 'Vérifier les factures : si la TVA est mentionnée (avec IF et ICE), la déduire sur une déclaration dans le délai d\'un an suivant le paiement.' });
+  }
+  // A7 Taux
+  const badRate = inv.filter(d => d.ecart != null && Math.abs(d.ecart) > 1);
+  if (badRate.length) anos.push({ sev: 'mid', theme: 'Taux de TVA atypiques', montant: r2(sum(badRate, d => d.ecart)), constat: badRate.map(d => `${d.supName} ${d.ref} : ${fmtP(d.taux)}`).join(' ; '), ref: 'Art. 98 et 99 CGI', impact: 'TVA déduite différente de la TVA facturée.', reco: 'Contrôler les factures et corriger les saisies.' });
+  // A8 Espèces
+  const cash = inv.filter(d => d.cash);
+  if (cash.length) anos.push({ sev: 'high', theme: 'Règlements en espèces', montant: r2(sum(cash, d => d.tva)), constat: cash.map(d => `${d.supName} ${d.ref}`).join(', '), ref: 'Art. 106-II CGI', impact: 'Déduction limitée aux règlements en espèces de 5 000 DH TTC par jour et par fournisseur.', reco: 'Privilégier les règlements bancaires traçables.' });
+  // A9 FNP
+  if (fnp.length) {
+    const dups = fnp.filter(f => f.dup);
+    anos.push({ sev: 'low', theme: 'FNP comptabilisées hors taxe', montant: totFnp.tvaDed,
+      constat: `${fnp.length} FNP ouvertes (${fmt(totFnp.amt)} HT) sans TVA sur FNP. TVA latente déductible estimée : ${fmt(totFnp.tvaDed)}, dont ${fmt(totFnp.immo)} sur immobilisations.` + (dups.length ? ` ${dups.length} ligne(s) avec plusieurs FNP ouvertes sur la même nature : extourne à vérifier.` : ''),
+      ref: 'CGNC – indépendance des exercices', impact: 'Pas de risque fiscal direct, mais la position TVA est sous-estimée et des charges peuvent être comptées deux fois.',
+      reco: 'Comptabiliser les FNP TTC avec une TVA sur FNP (sous-compte 3455) extournée à réception ; vérifier les FNP non extournées.' });
+  }
+  // A10 Crédit structurel
+  const totalColl = r2(sum(decl, d => d.coll));
+  if (totalColl < 0.01 && (s3456 > 0 || s3455 > 0)) {
+    const future = r2(sum(fourn.filter(f => f.nature === 'Immobilisation'), f => f.total) + totFnp.immo);
+    anos.push({ sev: 'opp', theme: 'Crédit de TVA structurel (phase d\'investissement)', montant: future,
+      constat: `Aucune TVA collectée sur la période. Le crédit de TVA (${fmt(s3456)}) va augmenter au paiement des dettes, notamment ${fmt(future)} de TVA sur immobilisations (comptabilisée et latente).`,
+      ref: 'Art. 92-I-6° et 103 bis CGI', impact: 'Trésorerie immobilisée. Les prestations d\'ingénierie ne relèvent pas forcément des « biens d\'investissement » remboursables.',
+      reco: 'Étudier avec le conseil fiscal la demande de remboursement (art. 103 bis) pour la part éligible et l\'achat en exonération (art. 92-I-6°) pour les biens d\'équipement à venir.' });
+  }
+  // A11 Intégrité
+  if (integ.length || Math.abs(glD - glC) > 0.02) anos.push({ sev: 'high', theme: 'Intégrité du fichier', montant: r2(glD - glC), constat: `${integ.length} compte(s) dont la somme des lignes diffère du total du grand livre ; débit total ${fmt(glD)} / crédit total ${fmt(glC)}.`, ref: '—', impact: 'Analyse potentiellement incomplète.', reco: 'Réexporter le grand livre complet.' });
+
+  const order = { high: 0, mid: 1, opp: 2, low: 3, ok: 4 };
+  anos.sort((a, b) => order[a.sev] - order[b.sev] || Math.abs(b.montant) - Math.abs(a.montant));
+  const okChecks = [];
+  if (!badRate.length) okChecks.push('Taux de TVA cohérents sur toutes les factures.');
+  if (Math.abs(recon.ecartTheo) < 1) okChecks.push('Solde 3455 cadré avec la TVA incluse dans les dettes fournisseurs.');
+  if (lastDecl && Math.abs(lastDecl.ecart) < 1) okChecks.push(`Crédit de TVA ${P.credit} conforme aux déclarations (${fmt(lastDecl.compta)}).`);
+  if (decl.every(d => Math.abs(d.ecartDed) < 1)) okChecks.push('Déductions comptabilisées conformes aux paiements de chaque période.');
+  if (!integ.length) okChecks.push('Intégrité du fichier : totaux des comptes et équilibre débit / crédit vérifiés.');
+  if (okChecks.length) anos.push({ sev: 'ok', theme: 'Contrôles concluants', montant: null, constat: okChecks.join(' '), ref: '—', impact: 'Aucun écart.', reco: 'Conserver la méthode de lettrage TVA ↔ règlement.' });
+
+  const corr = { immo: r2(s34551 + a1 - sum(toChg, d => d.tva)), chg: r2(s34552 - a1 + sum(toChg, d => d.tva) - sum(excl, d => d.tvaExcl)) };
+
+  return { cfg, gl, detail, inv, fourn, totF, recon, decl, lastDecl, creditInit, fnp, totFnp, anos, ecr, integ, glD, glC, capital, tceNotes,
+    soldes: { s34551, s34552, s3455, s3456 }, corr, reclass: a1, excl: r2(sum(excl, d => d.tvaExcl)) };
+}
+
+/* =====================================================================
+   5. Rendu
+   ===================================================================== */
+let STATE = { gl: null, res: null, file: null, cfg: JSON.parse(JSON.stringify(DEFAULT_CFG)) };
+const TABS = [
+  { id: 'synthese', label: 'Synthèse' }, { id: 'detail', label: 'Détail TVA' }, { id: 'fourn', label: 'Cadrage fournisseurs' },
+  { id: 'decl', label: 'Cadrage déclarations' }, { id: 'fnp', label: 'TVA latente FNP' }, { id: 'anos', label: 'Anomalies' },
+  { id: 'ecr', label: 'Écritures proposées' }, { id: 'params', label: 'Paramètres' }
+];
+let activeTab = 'synthese';
+
+function badge(text, kind) { return h('span', { class: 'badge b-' + kind }, text); }
+function statusBadge(st) { return badge(st, st === 'Payée' ? 'ok' : st === 'Non payée' ? 'warn' : st === 'Compensée' ? 'mute' : 'info'); }
+
+function table(cols, rows, opts = {}) {
+  const wrap = h('div', { class: 'tablewrap' });
+  const tbl = h('table'); wrap.append(tbl);
+  let sortKey = null, sortDir = 1;
+  const thead = h('thead'); const trh = h('tr');
+  cols.forEach(c => {
+    const th = h('th', { class: (c.num ? 'num ' : '') + (c.nosort ? 'nosort' : ''), scope: 'col', tabindex: c.nosort ? null : '0', title: c.title || null }, c.label);
+    if (!c.nosort) {
+      const go = () => { sortDir = sortKey === c.key ? -sortDir : 1; sortKey = c.key; [...trh.children].forEach(x => x.removeAttribute('aria-sort')); th.setAttribute('aria-sort', sortDir > 0 ? 'ascending' : 'descending'); draw(); };
+      th.addEventListener('click', go); th.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(); } });
+    }
+    trh.append(th);
+  });
+  thead.append(trh); tbl.append(thead);
+  const tbody = h('tbody'); tbl.append(tbody);
+  let current = rows;
+  function draw() {
+    clear(tbody);
+    let data = current.slice();
+    if (sortKey) { const c = cols.find(x => x.key === sortKey); const v = r => c.sortVal ? c.sortVal(r) : r[c.key]; data.sort((a, b) => { const x = v(a), y = v(b); return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x ?? '').localeCompare(String(y ?? ''), 'fr', { numeric: true })) * sortDir; }); }
+    const frag = document.createDocumentFragment();
+    for (const r of data) {
+      const tr = h('tr', { class: opts.rowClass ? opts.rowClass(r) : null });
+      for (const c of cols) {
+        const v = c.render ? c.render(r) : c.num ? fmt(r[c.key]) : c.date ? fmtD(r[c.key]) : (r[c.key] ?? '');
+        tr.append(h('td', { class: [c.num ? 'num' : '', c.wrap ? 'wrap' : '', c.mono ? 'mono' : '', c.nowrap ? 'nowrap' : ''].join(' ').trim() || null }, v));
+      }
+      frag.append(tr);
+    }
+    if (opts.totals && data.length) {
+      const tr = h('tr', { class: 'tot' });
+      cols.forEach((c, i) => tr.append(h('td', { class: c.num ? 'num' : null }, i === 0 ? `Total (${data.length})` : c.sum ? fmt(r2(sum(data, x => x[c.key] || 0))) : '')));
+      frag.append(tr);
+    }
+    if (!data.length) frag.append(h('tr', null, h('td', { colspan: cols.length }, 'Aucune ligne ne correspond aux filtres.')));
+    tbody.append(frag);
+  }
+  draw();
+  wrap.update = rs => { current = rs; draw(); };
+  return wrap;
+}
+
+function panelHead(title, desc, ...right) { return h('div', { class: 'panel-head' }, h('div', null, h('h2', null, title), desc ? h('p', null, desc) : null), h('div', { class: 'spacer' }), ...right); }
+function kpi(label, value, sub, hl) { return h('div', { class: 'card kpi' + (hl ? ' hl' : '') }, h('div', { class: 'l' }, label), h('div', { class: 'v' }, value), sub ? h('div', { class: 's' }, sub) : null); }
+function check(ok, title, sub, amount, warn) { return h('li', null, h('span', { class: 'dot ' + (ok ? 'ok' : warn ? 'warn' : 'ko'), 'aria-hidden': 'true' }, ok ? '✓' : '!'), h('div', { class: 't' }, title, sub ? h('small', null, sub) : null), h('span', { class: 'amt' }, amount), h('span', { class: 'sr-only' }, ok ? 'conforme' : 'écart')); }
+
+function renderSynthese(R) {
+  const p = clear($('#p-synthese')); const S = R.soldes, P = R.cfg.p;
+  p.append(panelHead('Synthèse de la TVA récupérable', `Période du ${fmtD(R.gl.periodStart)} au ${fmtD(R.gl.periodEnd)} · régime ${R.cfg.regime === 'M' ? 'mensuel' : 'trimestriel'} · taux de référence ${fmtP(R.cfg.rate)}.`));
+  p.append(h('div', { class: 'kpis' },
+    kpi('TVA récupérable 3455', fmt(S.s3455), `${P.tvaImmo} : ${fmt(S.s34551)} · ${P.tvaChg} : ${fmt(S.s34552)}`, true),
+    kpi(`Crédit de TVA ${P.credit}`, fmt(S.s3456), R.lastDecl ? `Fin ${R.lastDecl.label} · théorique ${fmt(R.lastDecl.theoFin)}` : ''),
+    kpi('Droit à déduction non né', fmt(R.recon.glUnpaid), `${fmtP(S.s3455 ? R.recon.glUnpaid / S.s3455 : 0)} du solde 3455 (factures non réglées)`),
+    kpi('Anomalies à traiter', String(R.anos.filter(a => a.sev === 'high' || a.sev === 'mid').length), `${R.anos.filter(a => a.sev === 'high').length} à enjeu élevé · ${R.ecr.length} écriture(s) proposée(s)`)
+  ));
+  const ecartTheo = R.recon.ecartTheo, lastE = R.lastDecl ? R.lastDecl.ecart : 0;
+  const dedOk = R.decl.every(d => Math.abs(d.ecartDed) < 1);
+  const nonConf = R.inv.filter(d => d.conforme === 'Non').length;
+  const checks = h('ul', { class: 'checks' },
+    check(!R.integ.length && Math.abs(R.glD - R.glC) < 0.02, 'Intégrité du grand livre', `${R.gl.entries.length} écritures · ${R.gl.accounts.size} comptes · débit = crédit`, fmt(R.glD - R.glC)),
+    check(Math.abs(R.recon.residuel) < 0.05, 'Solde 3455 recalculé à partir du détail', 'À-nouveau + factures + transferts', fmt(R.recon.residuel)),
+    check(Math.abs(ecartTheo) < 1, 'Cadrage 3455 ↔ dettes fournisseurs', 'TVA incluse dans les factures non réglées', fmt(ecartTheo)),
+    check(Math.abs(lastE) < 1, `Cadrage crédit ${P.credit} ↔ déclarations`, R.lastDecl ? `Crédit théorique fin ${R.lastDecl.label}` : '', fmt(lastE)),
+    check(dedOk, 'Déductions comptabilisées ↔ paiements de la période', 'Par période déclarative', fmt(r2(sum(R.decl, d => d.ecartDed)))),
+    check(!nonConf, 'Imputation 34551 / 34552', nonConf ? `${nonConf} ligne(s) mal imputée(s) + à-nouveau` : 'Conforme', fmt(R.reclass)),
+    check(!R.excl, 'TVA exclue du droit à déduction', 'Frais de déplacement / mission', fmt(R.excl))
+  );
+  const sup = R.fourn.filter(f => Math.abs(f.total) > 0.01).sort((a, b) => b.total - a.total);
+  const max = Math.max(1, ...sup.map(f => f.total));
+  const bars = h('div', { class: 'bars' });
+  for (const f of sup) {
+    const s = svg('svg', { viewBox: '0 0 100 10', preserveAspectRatio: 'none', role: 'img', 'aria-label': `${f.name} : ${fmt(f.total)}` });
+    s.append(svg('rect', { x: 0, y: 0, width: 100, height: 10, rx: 2, class: 'c-bg' }));
+    s.append(svg('rect', { x: 0, y: 0, width: Math.max(0.5, f.total / max * 100), height: 10, rx: 2, class: f.nature === 'Immobilisation' ? 'c-immo' : 'c-chg' }));
+    bars.append(h('div', { class: 'barrow' }, h('span', { class: 'nm', title: f.name }, f.name), s, h('span', { class: 'vv' }, fmt(f.total))));
+  }
+  p.append(h('div', { class: 'grid2' },
+    h('div', { class: 'card sec' }, h('h3', null, 'Contrôles de cadrage'), checks),
+    h('div', { class: 'card sec' }, h('h3', null, 'TVA non déduite par fournisseur'), bars,
+      h('div', { class: 'legend' }, h('span', null, h('i', { class: 'c-immo' }), 'Immobilisations'), h('span', null, h('i', { class: 'c-chg' }), 'Charges')))
+  ));
+  const rt = [
+    { l: `${P.tvaImmo} – solde comptable`, v: S.s34551 }, { l: `${P.tvaChg} – solde comptable`, v: S.s34552 },
+    { l: `Reclassement ${P.tvaChg} → ${P.tvaImmo}`, v: R.reclass }, { l: 'TVA non déductible (déplacements) sortie du 3455', v: -R.excl },
+    { l: `${P.tvaImmo} après retraitements`, v: R.corr.immo, b: 1 }, { l: `${P.tvaChg} après retraitements`, v: R.corr.chg, b: 1 }, { l: 'Total 3455 après retraitements', v: r2(R.corr.immo + R.corr.chg), b: 1 }
+  ];
+  const tb = h('table', null, h('tbody', null, rt.map(x => h('tr', { class: x.b ? 'sub' : null }, h('td', null, x.l), h('td', { class: 'num' }, fmt(x.v))))));
+  const kp = h('ul', { class: 'keypoints' }, R.anos.filter(a => a.sev !== 'ok').slice(0, 6).map(a => h('li', null, h('b', null, a.theme + ' : '), a.montant != null ? fmt(a.montant) + ' – ' : '', a.reco)));
+  p.append(h('div', { class: 'grid2' }, h('div', { class: 'card sec' }, h('h3', null, 'Retraitements proposés'), h('div', { class: 'tablewrap' }, tb)), h('div', { class: 'card sec' }, h('h3', null, 'Points clés'), kp)));
+}
+
+function renderDetail(R) {
+  const p = clear($('#p-detail'));
+  p.append(panelHead('Détail des mouvements de TVA', 'Chaque ligne des comptes 3455 et 3456, rapprochée de sa pièce (base HT, fournisseur, nature), de son règlement (lettrage) et de sa période de déduction.'));
+  const q = h('input', { type: 'search', placeholder: 'Rechercher (libellé, fournisseur, référence…)', 'aria-label': 'Rechercher' });
+  const fSt = h('select', { 'aria-label': 'Filtrer par statut' }, h('option', { value: '' }, 'Tous statuts'), ['Payée', 'Non payée', 'Compensée', 'À nouveau'].map(s => h('option', { value: s }, s)));
+  const fNat = h('select', { 'aria-label': 'Filtrer par nature' }, h('option', { value: '' }, 'Toutes natures'), ['Immobilisation', 'Charge'].map(s => h('option', { value: s }, s)));
+  const accts = [...new Set(R.detail.map(d => d.acct))].sort();
+  const fAc = h('select', { 'aria-label': 'Filtrer par compte' }, h('option', { value: '' }, 'Tous comptes'), accts.map(a => h('option', { value: a }, a + ' ' + (R.gl.accounts.get(a) || ''))));
+  const fAno = h('input', { type: 'checkbox' });
+  const tb = h('div', { class: 'toolbar' },
+    h('div', { class: 'search' }, (() => { const s = svg('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }); s.append(svg('circle', { cx: 11, cy: 11, r: 7 })); s.append(svg('path', { d: 'm20 20-3.5-3.5' })); return s; })(), q),
+    fSt, fNat, fAc, h('label', { class: 'ck' }, fAno, 'Anomalies seulement'));
+  const isAno = d => d.conforme === 'Non' || d.tvaExcl || (d.ecart != null && Math.abs(d.ecart) > 1) || d.cash;
+  const cols = [
+    { key: 'date', label: 'Date', date: true, nowrap: true }, { key: 'piece', label: 'Pièce', mono: true }, { key: 'jnl', label: 'Jnl' },
+    { key: 'acct', label: 'Compte TVA', mono: true }, { key: 'lib', label: 'Libellé', wrap: true }, { key: 'supName', label: 'Fournisseur' },
+    { key: 'ref', label: 'Réf.', mono: true }, { key: 'htAccts', label: 'Imputation HT', mono: true }, { key: 'nature', label: 'Nature' },
+    { key: 'ht', label: 'Base HT', num: true, sum: true }, { key: 'deb', label: 'TVA débit', num: true, sum: true }, { key: 'cred', label: 'TVA crédit', num: true, sum: true },
+    { key: 'tva', label: 'TVA nette', num: true, sum: true }, { key: 'taux', label: 'Taux', num: true, render: r => fmtP(r.taux) },
+    { key: 'ecart', label: 'Écart taux', num: true },
+    { key: 'statut', label: 'Statut', render: r => r.statut ? statusBadge(r.statut) : badge(r.type, 'info') },
+    { key: 'datePay', label: 'Réglée le', date: true, nowrap: true }, { key: 'periode', label: 'Période déduction', nowrap: true },
+    { key: 'attendu', label: 'Compte attendu', mono: true },
+    { key: 'conforme', label: 'Imputation', render: r => r.conforme === 'Oui' ? badge('Conforme', 'ok') : r.conforme === 'Non' ? badge('À reclasser', 'ko') : '' },
+    { key: 'tvaExcl', label: 'TVA non déductible', num: true, sum: true },
+    { key: 'obs', label: 'Observations', wrap: true, nosort: true, render: r => r.obs.join(' ') }
+  ];
+  const t = table(cols, R.detail, { totals: true, rowClass: r => r.conforme === 'Non' || r.tvaExcl ? 'ko' : (r.ecart != null && Math.abs(r.ecart) > 1) ? 'warn' : null });
+  const apply = () => {
+    const s = norm(q.value);
+    t.update(R.detail.filter(d => (!fSt.value || d.statut === fSt.value) && (!fNat.value || d.nature.startsWith(fNat.value)) && (!fAc.value || d.acct === fAc.value) && (!fAno.checked || isAno(d)) &&
+      (!s || norm([d.lib, d.supName, d.ref, d.piece, d.acct, d.obs.join(' ')].join(' ')).includes(s))));
+  };
+  [q, fSt, fNat, fAc, fAno].forEach(x => x.addEventListener('input', apply));
+  p.append(tb, t, h('p', { class: 'foot' }, 'Statut de règlement déterminé par le lettrage du compte fournisseur avec un mouvement de trésorerie. Lignes rouges : imputation à corriger ou TVA non déductible.'));
+}
+
+function renderFourn(R) {
+  const p = clear($('#p-fourn')); const y = R.gl.periodEnd.slice(0, 4);
+  p.append(panelHead('Cadrage TVA récupérable ↔ dettes fournisseurs', `La TVA n'est déductible qu'au paiement (art. 101-3° CGI) : la TVA restant en 3455 doit correspondre à la TVA incluse dans les factures non réglées au ${fmtD(R.gl.periodEnd)}.`));
+  const cols = [
+    { key: 'name', label: 'Fournisseur' }, { key: 'acct', label: 'Compte', mono: true }, { key: 'mode', label: 'Mode TVA' }, { key: 'nature', label: 'Nature' },
+    { key: 'solde', label: 'Dette TTC', num: true, sum: true }, { key: 'an', label: 'À-nouveau TTC', num: true, sum: true },
+    { key: 'theo', label: 'TVA théorique', num: true, sum: true, title: 'Dette TTC × t/(1+t) ; autoliquidation : base HT × t' },
+    { key: 'tvaAN', label: 'TVA à-nouveau', num: true, sum: true }, { key: 'tvaNP', label: `TVA ${y} non réglée`, num: true, sum: true },
+    { key: 'total', label: 'TVA non déduite', num: true, sum: true }, { key: 'ecart', label: 'Écart', num: true, sum: true },
+    { key: 'com', label: 'Commentaire', wrap: true, nosort: true }
+  ];
+  p.append(table(cols, R.fourn, { totals: true, rowClass: r => Math.abs(r.ecart) > 1 ? 'ko' : r.paidNoTva.length ? 'warn' : null }));
+  const rc = R.recon;
+  const lines = [
+    ['TVA non déduite reconstituée (fournisseurs)', R.totF.total],
+    ['Écart d\'arrondi / non expliqué sur l\'à-nouveau 3455 (réel – reconstitué)', rc.ecartAN],
+    ['TVA payée non encore transférée au crédit de TVA', rc.paidNotTransf],
+    ['TVA sur factures compensées (avoirs)', rc.compens],
+    ['TVA récupérable reconstituée', r2(R.totF.total + rc.ecartAN + rc.paidNotTransf + rc.compens + rc.otherInv), 1],
+    ['Solde comptable 3455 (grand livre)', rc.gl, 1],
+    ['Écart de cadrage', r2(R.totF.total + rc.ecartAN + rc.paidNotTransf + rc.compens + rc.otherInv - rc.gl), 2],
+    ['Écart TVA théorique sur dettes vs 3455 non réglé', rc.ecartTheo, 2]
+  ];
+  p.append(h('div', { class: 'card sec' }, h('h3', null, 'Rapprochement avec le solde comptable'),
+    h('div', { class: 'tablewrap' }, h('table', null, h('tbody', null, lines.map(([l, v, b]) => h('tr', { class: b ? 'sub' : null }, h('td', null, l), h('td', { class: 'num' }, b === 2 ? h('span', { class: 'badge ' + (Math.abs(v) < 1 ? 'b-ok' : 'b-ko') }, fmt(v)) : fmt(v)))))))));
+}
+
+function renderDecl(R) {
+  const p = clear($('#p-decl')); const P = R.cfg.p;
+  p.append(panelHead('Cadrage des déclarations et du crédit de TVA', `Crédit de TVA d'ouverture : ${fmt(R.creditInit)}. La TVA déductible de chaque période = TVA des factures réglées sur la période, hors TVA exclue.`));
+  const cols = [
+    { key: 'label', label: 'Période', nowrap: true }, { key: 'nbPay', label: 'Factures réglées', num: true, render: r => String(r.nbPay) },
+    { key: 'coll', label: 'TVA collectée', num: true, sum: true }, { key: 'autoDue', label: 'TVA due autoliq.', num: true, sum: true },
+    { key: 'dedChg', label: 'Déductible charges', num: true, sum: true }, { key: 'dedImmo', label: 'Déductible immob.', num: true, sum: true },
+    { key: 'transf', label: 'Transfert comptabilisé', num: true, sum: true }, { key: 'ecartDed', label: 'Écart déduction', num: true, sum: true },
+    { key: 'debut', label: 'Crédit début', num: true }, { key: 'theoFin', label: 'Crédit fin théorique', num: true }, { key: 'aPayer', label: 'TVA à payer', num: true, sum: true },
+    { key: 'compta', label: `Solde ${P.credit} comptable`, num: true }, { key: 'ecart', label: 'Écart crédit', num: true }
+  ];
+  p.append(table(cols, R.decl, { totals: false, rowClass: r => Math.abs(r.ecart) > 1 || Math.abs(r.ecartDed) > 1 ? 'ko' : null }));
+  const L = R.lastDecl;
+  if (L) p.append(h('div', { class: 'card sec' }, h('h3', null, `Conclusion à fin ${L.label}`),
+    h('p', null, Math.abs(L.ecart) < 1 ? `Le crédit de TVA comptabilisé en ${P.credit} (${fmt(L.compta)}) est conforme au crédit théorique issu des règlements fournisseurs.` : `Écart de ${fmt(L.ecart)} entre le crédit théorique (${fmt(L.theoFin)}) et le solde ${P.credit} (${fmt(L.compta)}) : rapprocher avec les déclarations déposées.`)));
+}
+
+function renderFnp(R) {
+  const p = clear($('#p-fnp'));
+  p.append(panelHead('TVA latente sur factures non parvenues', `FNP ouvertes (non lettrées) au ${fmtD(R.gl.periodEnd)}, comptabilisées hors taxe. TVA estimée au taux de ${fmtP(R.cfg.rate)}.`));
+  p.append(h('div', { class: 'kpis' }, kpi('FNP ouvertes (HT)', fmt(R.totFnp.amt), `${R.fnp.length} lignes`), kpi('TVA latente déductible', fmt(R.totFnp.tvaDed), 'Hors frais exclus', true), kpi('dont immobilisations', fmt(R.totFnp.immo), R.cfg.p.tvaImmo), kpi('dont charges', fmt(R.totFnp.chg), R.cfg.p.tvaChg)));
+  const cols = [
+    { key: 'date', label: 'Date', date: true, nowrap: true }, { key: 'acct', label: 'Compte FNP', mono: true }, { key: 'name', label: 'Fournisseur' },
+    { key: 'lib', label: 'Libellé', wrap: true }, { key: 'cp', label: 'Contrepartie', mono: true }, { key: 'nature', label: 'Nature' },
+    { key: 'amt', label: 'Montant HT', num: true, sum: true }, { key: 'tva', label: 'TVA latente', num: true, sum: true }, { key: 'tvaDed', label: 'TVA déductible future', num: true, sum: true },
+    { key: 'dest', label: 'Destination', mono: true }, { key: 'com', label: 'Commentaire', wrap: true, nosort: true }
+  ];
+  p.append(table(cols, R.fnp, { totals: true, rowClass: r => r.dup ? 'warn' : null }));
+}
+
+function renderAnos(R) {
+  const p = clear($('#p-anos'));
+  p.append(panelHead('Constats, risques fiscaux et recommandations', 'Classés par enjeu décroissant. Les montants se recalculent à chaque chargement ou changement de paramètres.'));
+  const SEV = { high: ['Élevé', 'ko'], mid: ['Moyen', 'warn'], low: ['Faible', 'info'], opp: ['Opportunité', 'info'], ok: ['Conforme', 'ok'] };
+  const filt = h('div', { class: 'filters', role: 'group', 'aria-label': 'Filtrer par niveau' });
+  let cur = '';
+  const list = h('div', { class: 'anos' });
+  const draw = () => {
+    clear(list);
+    R.anos.filter(a => !cur || a.sev === cur).forEach((a, i) => list.append(h('article', { class: 'card ano s-' + a.sev },
+      h('div', { class: 'num' }, String(i + 1)),
+      h('div', null, h('h3', null, a.theme), h('p', null, a.constat), h('span', { class: 'lbl' }, 'Impact'), h('p', null, a.impact), h('span', { class: 'lbl' }, 'Recommandation'), h('p', null, a.reco)),
+      h('div', { class: 'right' }, badge(SEV[a.sev][0], SEV[a.sev][1]), a.montant != null ? h('div', { class: 'amt' }, fmt(a.montant)) : null, h('div', { class: 'ref' }, a.ref)))));
+  };
+  [['', 'Tous'], ['high', 'Élevé'], ['mid', 'Moyen'], ['opp', 'Opportunité'], ['low', 'Faible'], ['ok', 'Conforme']].forEach(([k, l]) => {
+    const n = k ? R.anos.filter(a => a.sev === k).length : R.anos.length; if (k && !n) return;
+    const b = h('button', { class: 'pill', 'aria-pressed': k === cur ? 'true' : 'false' }, `${l} (${n})`);
+    b.addEventListener('click', () => { cur = k; [...filt.children].forEach(x => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); draw(); });
+    filt.append(b);
+  });
+  draw(); p.append(filt, list);
+}
+
+function ecrRows(R) { const out = []; R.ecr.forEach(e => e.lines.forEach((l, i) => out.push({ ref: e.ref, date: R.gl.periodEnd, acct: l.acct, lib: l.lib, d: l.d, c: l.c, just: i === 0 ? e.just : '' }))); return out; }
+function renderEcr(R) {
+  const p = clear($('#p-ecr')); const rows = ecrRows(R);
+  p.append(panelHead('Écritures de régularisation proposées', `À valider avant passation, datées du ${fmtD(R.gl.periodEnd)}.`));
+  if (!rows.length) { p.append(h('div', { class: 'card sec' }, 'Aucune écriture de régularisation nécessaire.')); return; }
+  p.append(table([
+    { key: 'ref', label: 'Réf.' }, { key: 'date', label: 'Date', date: true }, { key: 'acct', label: 'Compte', mono: true }, { key: 'lib', label: 'Intitulé', wrap: true },
+    { key: 'd', label: 'Débit', num: true, sum: true }, { key: 'c', label: 'Crédit', num: true, sum: true }, { key: 'just', label: 'Justification', wrap: true, nosort: true }
+  ], rows, { totals: true }));
+  const diff = r2(sum(rows, r => r.d - r.c));
+  p.append(h('p', { class: 'foot' }, 'Équilibre débit / crédit : ', badge(Math.abs(diff) < 0.01 ? 'équilibré' : fmt(diff), Math.abs(diff) < 0.01 ? 'ok' : 'ko')));
+}
+
+function renderParams() {
+  const p = clear($('#p-params')); const c = STATE.cfg;
+  p.append(panelHead('Paramètres d\'analyse', 'Adaptez les préfixes de comptes à votre plan comptable. Toutes les feuilles se recalculent à l\'application.'));
+  const F = (id, label, value, help, type = 'text') => h('div', { class: 'field' }, h('label', { for: id }, label), h('input', { id, type, value, autocomplete: 'off', spellcheck: 'false', step: type === 'number' ? '0.01' : null, min: type === 'number' ? '0' : null, max: type === 'number' ? '100' : null }), help ? h('small', null, help) : null);
+  const reg = h('select', { id: 'pr-regime' }, h('option', { value: 'T', selected: c.regime === 'T' || null }, 'Trimestriel'), h('option', { value: 'M', selected: c.regime === 'M' || null }, 'Mensuel'));
+  const form = h('div', { class: 'card sec' }, h('div', { class: 'form' },
+    F('pr-rate', 'Taux normal de TVA (%)', String(c.rate * 100), 'Utilisé pour la TVA théorique et latente.', 'number'),
+    h('div', { class: 'field' }, h('label', { for: 'pr-regime' }, 'Régime de déclaration'), reg, h('small', null, 'Détermine les périodes de déduction.')),
+    F('pr-company', 'Société', c.company, 'Repris dans l\'export Excel.'),
+    F('pr-tvaImmo', 'TVA récupérable sur immobilisations', c.p.tvaImmo), F('pr-tvaChg', 'TVA récupérable sur charges', c.p.tvaChg), F('pr-credit', 'Crédit de TVA', c.p.credit),
+    F('pr-fourn', 'Fournisseurs', c.p.fourn), F('pr-fnp', 'Fournisseurs – factures non parvenues', c.p.fnp), F('pr-tvaDue', 'TVA due / facturée', c.p.tvaDue),
+    F('pr-etatAutres', 'État – autres impôts à payer', c.p.etatAutres), F('pr-banque', 'Trésorerie (préfixes séparés par des virgules)', c.p.banque), F('pr-caisse', 'Caisse', c.p.caisse),
+    F('pr-tce', 'Transferts de charges', c.p.tce), F('pr-depl', 'Frais à TVA non déductible (préfixes)', c.p.depl, 'Ex. 6143 (déplacements, missions, réceptions).')),
+    h('div', { class: 'form-actions' }, h('button', { class: 'btn btn-primary', id: 'pr-apply' }, 'Appliquer et recalculer'), h('button', { class: 'btn', id: 'pr-reset' }, 'Valeurs par défaut')));
+  p.append(form);
+  const clean = s => String(s).replace(/[^0-9,]/g, '').slice(0, 80);
+  $('#pr-apply').addEventListener('click', () => {
+    const rate = parseFloat($('#pr-rate').value);
+    if (!(rate > 0 && rate < 100)) { toast('Taux de TVA invalide.', 'err'); return; }
+    c.rate = rate / 100; c.regime = $('#pr-regime').value === 'M' ? 'M' : 'T'; c.company = $('#pr-company').value.slice(0, 80);
+    for (const k of Object.keys(c.p)) { const v = clean($('#pr-' + k).value); if (!v) { toast('Préfixe vide : ' + k, 'err'); return; } c.p[k] = v; }
+    if (STATE.gl) { run(); toast('Paramètres appliqués : analyse recalculée.', 'ok'); } else toast('Paramètres enregistrés.', 'ok');
+  });
+  $('#pr-reset').addEventListener('click', () => { STATE.cfg = JSON.parse(JSON.stringify(DEFAULT_CFG)); STATE.cfg.company = c.company; renderParams(); if (STATE.gl) run(); });
+}
+
+function renderTabs(R) {
+  const nav = clear($('#tabs')); nav.classList.add('show');
+  const counts = { detail: R.detail.length, fourn: R.fourn.length, fnp: R.fnp.length, anos: R.anos.filter(a => a.sev === 'high' || a.sev === 'mid').length, ecr: R.ecr.length };
+  TABS.forEach(t => {
+    const b = h('button', { class: 'tab', role: 'tab', id: 'tab-' + t.id, 'aria-controls': 'p-' + t.id, 'aria-selected': t.id === activeTab ? 'true' : 'false', tabindex: t.id === activeTab ? '0' : '-1' }, t.label,
+      counts[t.id] != null ? h('span', { class: 'count' + (t.id === 'anos' && counts.anos ? ' ko' : '') }, String(counts[t.id])) : null);
+    b.addEventListener('click', () => show(t.id));
+    b.addEventListener('keydown', ev => {
+      const i = TABS.findIndex(x => x.id === t.id);
+      if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') { ev.preventDefault(); const n = TABS[(i + (ev.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length]; show(n.id); $('#tab-' + n.id).focus(); }
+    });
+    nav.append(b);
+  });
+  show(activeTab);
+}
+function show(id) {
+  activeTab = id;
+  TABS.forEach(t => { const on = t.id === id; const b = $('#tab-' + t.id); if (b) { b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; } $('#p-' + t.id).classList.toggle('show', on); $('#p-' + t.id).setAttribute('aria-labelledby', 'tab-' + t.id); });
+}
+
+function renderFileInfo(R) {
+  const fi = clear($('#fileinfo')); fi.classList.add('show');
+  const chip = (l, v) => h('span', { class: 'chip' }, l, h('b', null, v));
+  fi.append(chip('Fichier ', STATE.file.name), chip('Société ', R.cfg.company || '—'), chip('Période ', `${fmtD(R.gl.periodStart)} → ${fmtD(R.gl.periodEnd)}`),
+    chip('Écritures ', R.gl.entries.length.toLocaleString('fr-FR')), chip('Comptes ', String(R.gl.accounts.size)), chip('Feuille ', STATE.file.sheet),
+    h('span', { class: 'badge ' + (R.integ.length ? 'b-ko' : 'b-ok') }, R.integ.length ? 'Intégrité : écarts' : 'Intégrité vérifiée'));
+  $('#subtitle').textContent = `${R.cfg.company || 'Société'} · ${fmtD(R.gl.periodStart)} – ${fmtD(R.gl.periodEnd)}`;
+}
+
+function run() {
+  const R = analyze(STATE.gl, STATE.cfg); STATE.res = R;
+  $('#empty').hidden = true; $('#upload').classList.add('compact'); $('#drop-title').textContent = 'Charger un autre grand livre (glisser-déposer ou cliquer)';
+  renderFileInfo(R); renderSynthese(R); renderDetail(R); renderFourn(R); renderDecl(R); renderFnp(R); renderAnos(R); renderEcr(R); renderParams(); renderTabs(R);
+  ['#btn-export', '#btn-print', '#btn-reset'].forEach(s => { $(s).disabled = false; });
+  announce('Analyse terminée : ' + R.anos.length + ' constats.');
+}
+
+/* =====================================================================
+   6. Chargement du fichier
+   ===================================================================== */
+async function handleFile(file) {
+  if (!file) return;
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (!['xlsx', 'xlsm', 'csv'].includes(ext)) { toast('Format non pris en charge : utilisez un fichier .xlsx ou .csv (un .xls doit être réenregistré en .xlsx).', 'err'); return; }
+  if (file.size > LIMITS.fileBytes) { toast('Fichier trop volumineux (25 Mo maximum).', 'err'); return; }
+  if (file.size === 0) { toast('Le fichier est vide.', 'err'); return; }
+  const pr = $('#progress'); pr.classList.add('show'); $('#progress-txt').textContent = `Lecture de « ${file.name} »…`;
+  try {
+    const buf = await file.arrayBuffer();
+    const book = ext === 'csv' ? readCsv(buf) : await readXlsx(buf);
+    $('#progress-txt').textContent = 'Analyse du grand livre…';
+    await new Promise(r => setTimeout(r, 30));
+    const gl = parseGL(book.rows);
+    STATE.gl = gl; STATE.file = { name: file.name, sheet: book.sheet };
+    if (!STATE.cfg.company) STATE.cfg.company = (file.name.split(/[_\-\s.]/).find(x => x && /^[A-Za-z]{3,}$/.test(x) && !/^(gl|grand|livre|au|du|xlsx|xlsm|csv|tva)$/i.test(x)) || '').toUpperCase();
+    activeTab = 'synthese';
+    run();
+    toast(`Grand livre chargé : ${gl.entries.length} écritures analysées.`, 'ok');
+  } catch (err) {
+    console.error(err);
+    toast(err && err.message ? err.message : 'Lecture impossible.', 'err');
+  } finally { pr.classList.remove('show'); $('#file').value = ''; }
+}
+
+/* =====================================================================
+   7. Export Excel natif (ZIP + SpreadsheetML)
+   ===================================================================== */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files) {
+  const enc = new TextEncoder(); const parts = []; const central = []; let off = 0;
+  for (const [name, content] of files) {
+    const nb = enc.encode(name), data = enc.encode(content), crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, nb.length, true);
+    parts.push(new Uint8Array(lh.buffer), nb, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, nb.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), nb);
+    off += 30 + nb.length + data.length;
+  }
+  const cdSize = central.reduce((s, x) => s + x.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+const xe = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+function colName(i) { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+// styles : 0 normal · 1 en-tête · 2 nombre · 3 % · 4 date · 5 gras · 6 nombre gras · 7 titre · 8 texte renvoyé à la ligne
+const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0.00;(#,##0.00);&quot;-&quot;"/><numFmt numFmtId="165" formatCode="0.0%"/><numFmt numFmtId="166" formatCode="dd/mm/yyyy"/></numFmts>
+<fonts count="4"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font><font><b/><sz val="14"/><color rgb="FF1F3864"/><name val="Arial"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F3864"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FFBFBFBF"/></bottom><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="9"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyBorder="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="center" horizontal="center"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="166" fontId="0" fillId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="1" applyFont="1" applyBorder="1"/><xf numFmtId="164" fontId="2" fillId="0" borderId="1" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="0" fontId="3" fillId="0" borderId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf></cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+function sheetXml(sh) {
+  const out = [];
+  out.push('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">');
+  if (sh.freeze) out.push(`<sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="${sh.freeze}" topLeftCell="A${sh.freeze + 1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`);
+  else out.push('<sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>');
+  out.push('<cols>' + sh.widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('') + '</cols><sheetData>');
+  sh.rows.forEach((row, ri) => {
+    out.push(`<row r="${ri + 1}">`);
+    row.forEach((cell, ci) => {
+      if (cell == null) return;
+      const c = typeof cell === 'object' && !(cell instanceof Date) ? cell : { v: cell };
+      if (c.v == null || c.v === '') { if (c.s) out.push(`<c r="${colName(ci)}${ri + 1}" s="${c.s}"/>`); return; }
+      const ref = colName(ci) + (ri + 1);
+      if (c.date) { const [y, m, d] = String(c.v).split('-').map(Number); const serial = (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000; out.push(`<c r="${ref}" s="4"><v>${serial}</v></c>`); }
+      else if (typeof c.v === 'number') out.push(`<c r="${ref}" s="${c.s ?? (c.pct ? 3 : 2)}"><v>${Number.isFinite(c.v) ? c.v : 0}</v></c>`);
+      else out.push(`<c r="${ref}" s="${c.s ?? 0}" t="inlineStr"><is><t xml:space="preserve">${xe(c.v)}</t></is></c>`);
+    });
+    out.push('</row>');
+  });
+  out.push('</sheetData>');
+  if (sh.autoFilter) out.push(`<autoFilter ref="${sh.autoFilter}"/>`);
+  out.push('<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>');
+  return out.join('');
+}
+function buildWorkbook(sheets) {
+  const files = [];
+  files.push(['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`]);
+  files.push(['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`]);
+  files.push(['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s, i) => `<sheet name="${xe(s.name.slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>${sheets.some(s => s.autoFilter) ? '<definedNames>' + sheets.map((s, i) => s.autoFilter ? `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xe(s.name)}'!$${s.autoFilter.replace(':', ':$').replace(/([A-Z]+)(\d+)/g, '$1$$$2')}</definedName>` : '').join('') + '</definedNames>' : ''}</workbook>`]);
+  files.push(['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`]);
+  files.push(['xl/styles.xml', STYLES]);
+  sheets.forEach((s, i) => files.push([`xl/worksheets/sheet${i + 1}.xml`, sheetXml(s)]));
+  return zipStore(files);
+}
+function tableSheet(name, title, sub, cols, rows, opts = {}) {
+  const out = [[{ v: title, s: 7 }], [sub], [], cols.map(c => ({ v: c.label, s: 1 }))];
+  for (const r of rows) out.push(cols.map(c => { const v = c.get ? c.get(r) : r[c.key]; if (c.date) return v ? { v, date: true } : null; if (c.pct) return v == null || v === '' ? null : { v, pct: true }; if (c.num) return v == null || v === '' ? null : { v: r2(v) }; return { v: v ?? '', s: c.wrap ? 8 : 0 }; }));
+  if (opts.totals) out.push(cols.map((c, i) => i === 0 ? { v: 'TOTAL', s: 5 } : c.sum ? { v: r2(sum(rows, r => (c.get ? c.get(r) : r[c.key]) || 0)), s: 6 } : { v: '', s: 5 }));
+  return { name, rows: out, widths: cols.map(c => c.w || 14), freeze: 4, autoFilter: rows.length ? `A4:${colName(cols.length - 1)}${4 + rows.length}` : null };
+}
+function exportExcel() {
+  const R = STATE.res; if (!R) return;
+  const P = R.cfg.p, co = R.cfg.company || 'Société', per = `Période du ${fmtD(R.gl.periodStart)} au ${fmtD(R.gl.periodEnd)}`;
+  const src = `Source : ${STATE.file.name} · ${per} · généré le ${new Date().toLocaleDateString('fr-FR')}`;
+  const S = R.soldes;
+  const syn = [[{ v: `${co} – Analyse et cadrage de la TVA récupérable au ${fmtD(R.gl.periodEnd)}`, s: 7 }], [src], [],
+    [{ v: 'A. Soldes comptables', s: 1 }, { v: 'Montant', s: 1 }],
+    [`${P.tvaImmo} – TVA récupérable sur immobilisations`, { v: S.s34551 }], [`${P.tvaChg} – TVA récupérable sur charges`, { v: S.s34552 }],
+    [{ v: 'Total TVA récupérable (3455)', s: 5 }, { v: S.s3455, s: 6 }], [`${P.credit} – Crédit de TVA`, { v: S.s3456 }], [],
+    [{ v: 'B. Cadrage', s: 1 }, { v: 'Écart', s: 1 }],
+    ['Solde 3455 recalculé à partir du détail', { v: R.recon.residuel }], ['3455 ↔ TVA incluse dans les dettes fournisseurs', { v: R.recon.ecartTheo }],
+    [`Crédit ${P.credit} ↔ déclarations (fin ${R.lastDecl ? R.lastDecl.label : ''})`, { v: R.lastDecl ? R.lastDecl.ecart : 0 }],
+    ['Déductions comptabilisées ↔ paiements', { v: r2(sum(R.decl, d => d.ecartDed)) }], ['Intégrité débit – crédit du grand livre', { v: r2(R.glD - R.glC) }], [],
+    [{ v: 'C. Analyse du solde 3455', s: 1 }, { v: 'Montant', s: 1 }],
+    ['TVA sur factures non réglées – droit à déduction non né', { v: R.recon.glUnpaid }], ['TVA payée non encore transférée', { v: R.recon.paidNotTransf }], ['TVA sur factures compensées', { v: R.recon.compens }], [],
+    [{ v: 'D. Retraitements proposés', s: 1 }, { v: 'Montant', s: 1 }],
+    [`Reclassement ${P.tvaChg} → ${P.tvaImmo}`, { v: R.reclass }], ['TVA non déductible (déplacements)', { v: -R.excl }],
+    [{ v: `${P.tvaImmo} après retraitements`, s: 5 }, { v: R.corr.immo, s: 6 }], [{ v: `${P.tvaChg} après retraitements`, s: 5 }, { v: R.corr.chg, s: 6 }], [],
+    [{ v: 'E. Points clés', s: 1 }, { v: '', s: 1 }], ...R.anos.filter(a => a.sev !== 'ok').map(a => [{ v: `${a.theme} : ${a.reco}`, s: 8 }, a.montant != null ? { v: a.montant } : null])];
+  const sheets = [{ name: 'Synthèse', rows: syn, widths: [90, 20] }];
+  sheets.push(tableSheet('Détail TVA', `${co} – Détail des mouvements de TVA`, src, [
+    { key: 'date', label: 'Date', date: true, w: 11 }, { key: 'piece', label: 'N° pièce', w: 10 }, { key: 'jnl', label: 'Jnl', w: 5 }, { key: 'acct', label: 'Compte TVA', w: 12 },
+    { key: 'lib', label: 'Libellé', w: 44, wrap: true }, { key: 'supName', label: 'Fournisseur', w: 14 }, { key: 'ref', label: 'Réf.', w: 14 }, { key: 'htAccts', label: 'Imputation HT', w: 22 },
+    { key: 'nature', label: 'Nature', w: 18 }, { key: 'ht', label: 'Base HT', num: true, sum: true, w: 15 }, { key: 'deb', label: 'TVA débit', num: true, sum: true }, { key: 'cred', label: 'TVA crédit', num: true, sum: true },
+    { key: 'tva', label: 'TVA nette', num: true, sum: true }, { key: 'taux', label: 'Taux', pct: true, w: 8 }, { key: 'ecart', label: 'Écart taux', num: true, w: 10 },
+    { key: 'statut', label: 'Statut', get: r => r.statut || r.type, w: 14 }, { key: 'datePay', label: 'Réglée le', date: true, w: 11 }, { key: 'periode', label: 'Période déduction', w: 14 },
+    { key: 'attendu', label: 'Compte attendu', w: 11 }, { key: 'conforme', label: 'Imputation conforme', w: 11 }, { key: 'tvaExcl', label: 'TVA non déductible', num: true, sum: true },
+    { key: 'obs', label: 'Observations', get: r => r.obs.join(' '), w: 70, wrap: true }], R.detail, { totals: true }));
+  sheets.push(tableSheet('Cadrage fournisseurs', `${co} – Cadrage TVA ↔ dettes fournisseurs`, src, [
+    { key: 'name', label: 'Fournisseur', w: 18 }, { key: 'acct', label: 'Compte', w: 12 }, { key: 'mode', label: 'Mode TVA', w: 15 }, { key: 'nature', label: 'Nature', w: 14 },
+    { key: 'solde', label: 'Dette TTC', num: true, sum: true, w: 16 }, { key: 'an', label: 'À-nouveau TTC', num: true, sum: true, w: 16 }, { key: 'theo', label: 'TVA théorique', num: true, sum: true, w: 16 },
+    { key: 'tvaAN', label: 'TVA à-nouveau', num: true, sum: true, w: 16 }, { key: 'tvaNP', label: 'TVA non réglée de la période', num: true, sum: true, w: 16 }, { key: 'total', label: 'TVA non déduite', num: true, sum: true, w: 16 },
+    { key: 'ecart', label: 'Écart', num: true, sum: true, w: 10 }, { key: 'com', label: 'Commentaire', w: 70, wrap: true }], R.fourn, { totals: true }));
+  const fs = sheets[sheets.length - 1]; const rc = R.recon;
+  fs.rows.push([], [{ v: 'Rapprochement', s: 1 }, { v: '', s: 1 }, { v: '', s: 1 }, { v: '', s: 1 }, { v: 'Montant', s: 1 }],
+    ['TVA non déduite reconstituée', null, null, null, { v: R.totF.total }], ['Écart sur à-nouveau 3455', null, null, null, { v: rc.ecartAN }],
+    ['TVA payée non transférée', null, null, null, { v: rc.paidNotTransf }], ['TVA sur factures compensées', null, null, null, { v: rc.compens }],
+    [{ v: 'Solde comptable 3455', s: 5 }, null, null, null, { v: rc.gl, s: 6 }], [{ v: 'Écart de cadrage', s: 5 }, null, null, null, { v: r2(R.totF.total + rc.ecartAN + rc.paidNotTransf + rc.compens + rc.otherInv - rc.gl), s: 6 }]);
+  fs.autoFilter = null;
+  sheets.push(tableSheet('Cadrage déclarations', `${co} – Cadrage des déclarations de TVA`, src + ` · crédit d'ouverture ${fmt(R.creditInit)}`, [
+    { key: 'label', label: 'Période', w: 10 }, { key: 'nbPay', label: 'Factures réglées', num: true, w: 10 }, { key: 'coll', label: 'TVA collectée', num: true, sum: true }, { key: 'autoDue', label: 'TVA due autoliq.', num: true, sum: true },
+    { key: 'dedChg', label: 'Déductible charges', num: true, sum: true }, { key: 'dedImmo', label: 'Déductible immob.', num: true, sum: true }, { key: 'transf', label: 'Transfert comptabilisé', num: true, sum: true },
+    { key: 'ecartDed', label: 'Écart déduction', num: true, sum: true }, { key: 'debut', label: 'Crédit début', num: true }, { key: 'theoFin', label: 'Crédit fin théorique', num: true },
+    { key: 'aPayer', label: 'TVA à payer', num: true, sum: true }, { key: 'compta', label: 'Solde crédit comptable', num: true }, { key: 'ecart', label: 'Écart crédit', num: true }], R.decl, { totals: true }));
+  sheets.push(tableSheet('TVA latente FNP', `${co} – TVA latente sur FNP`, src + ` · taux ${fmtP(R.cfg.rate)}`, [
+    { key: 'date', label: 'Date', date: true, w: 11 }, { key: 'acct', label: 'Compte FNP', w: 12 }, { key: 'name', label: 'Fournisseur', w: 16 }, { key: 'lib', label: 'Libellé', w: 44, wrap: true },
+    { key: 'cp', label: 'Contrepartie', w: 12 }, { key: 'nature', label: 'Nature', w: 16 }, { key: 'amt', label: 'Montant HT', num: true, sum: true, w: 16 }, { key: 'tva', label: 'TVA latente', num: true, sum: true },
+    { key: 'tvaDed', label: 'TVA déductible future', num: true, sum: true }, { key: 'dest', label: 'Destination', w: 11 }, { key: 'com', label: 'Commentaire', w: 60, wrap: true }], R.fnp, { totals: true }));
+  const SEV = { high: 'Élevé', mid: 'Moyen', low: 'Faible', opp: 'Opportunité', ok: 'Conforme' };
+  sheets.push(tableSheet('Anomalies', `${co} – Constats et recommandations`, src, [
+    { key: 'n', label: 'N°', get: r => R.anos.indexOf(r) + 1, num: true, w: 5 }, { key: 'theme', label: 'Thème', w: 26, wrap: true }, { key: 'constat', label: 'Constat', w: 70, wrap: true },
+    { key: 'ref', label: 'Référence', w: 22, wrap: true }, { key: 'montant', label: 'Montant TVA', num: true, w: 16 }, { key: 'impact', label: 'Impact', w: 50, wrap: true },
+    { key: 'sev', label: 'Niveau', get: r => SEV[r.sev], w: 12 }, { key: 'reco', label: 'Recommandation', w: 60, wrap: true }], R.anos));
+  sheets.push(tableSheet('Écritures proposées', `${co} – Écritures de régularisation proposées`, src, [
+    { key: 'ref', label: 'Réf.', w: 6 }, { key: 'date', label: 'Date', date: true, w: 11 }, { key: 'acct', label: 'Compte', w: 12 }, { key: 'lib', label: 'Intitulé', w: 50, wrap: true },
+    { key: 'd', label: 'Débit', num: true, sum: true, w: 16 }, { key: 'c', label: 'Crédit', num: true, sum: true, w: 16 }, { key: 'just', label: 'Justification', w: 60, wrap: true }], ecrRows(R), { totals: true }));
+  const blob = buildWorkbook(sheets);
+  const url = URL.createObjectURL(blob);
+  const a = h('a', { href: url, download: `${(co || 'Societe').replace(/[^\w-]+/g, '_')}_Cadrage_TVA_${R.gl.periodEnd}.xlsx` });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast('Classeur Excel généré.', 'ok');
+}
+
+/* =====================================================================
+   8. Événements
+   ===================================================================== */
+const drop = $('#drop'), input = $('#file');
+input.addEventListener('change', () => handleFile(input.files && input.files[0]));
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', e => handleFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]));
+window.addEventListener('dragover', e => e.preventDefault()); window.addEventListener('drop', e => e.preventDefault());
+$('#btn-export').addEventListener('click', () => { try { exportExcel(); } catch (e) { console.error(e); toast('Export impossible : ' + e.message, 'err'); } });
+$('#btn-print').addEventListener('click', () => window.print());
+$('#btn-reset').addEventListener('click', () => {
+  STATE.gl = null; STATE.res = null; STATE.file = null; STATE.cfg.company = '';
+  ['synthese', 'detail', 'fourn', 'decl', 'fnp', 'anos', 'ecr'].forEach(id => { clear($('#p-' + id)); $('#p-' + id).classList.remove('show'); });
+  $('#p-params').classList.remove('show');
+  clear($('#tabs')).classList.remove('show'); clear($('#fileinfo')).classList.remove('show'); $('#empty').hidden = false; $('#upload').classList.remove('compact'); $('#drop-title').textContent = 'Déposez le grand livre ici';
+  $('#subtitle').textContent = 'Analyse du grand livre – comptes 3455 / 3456 – CGI Maroc';
+  ['#btn-export', '#btn-print', '#btn-reset'].forEach(s => { $(s).disabled = true; });
+  toast('Données effacées de la mémoire du navigateur.', 'ok');
+});
+const root = document.documentElement;
+const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+let theme = null; try { theme = localStorage.getItem('tva-theme'); } catch (_) {}
+root.setAttribute('data-theme', theme || (prefersDark ? 'dark' : 'light'));
+$('#btn-theme').addEventListener('click', () => { const t = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; root.setAttribute('data-theme', t); try { localStorage.setItem('tva-theme', t); } catch (_) {} });
+renderParams();
+})();
+</script>
+</body>
+</html>
